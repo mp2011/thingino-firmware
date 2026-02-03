@@ -2,7 +2,7 @@ PRUDYNT_T_SITE_METHOD = git
 # PRUDYNT_T_SITE = https://github.com/gtxaspec/prudynt-t
 PRUDYNT_T_SITE = https://github.com/themactep/prudynt-t
 PRUDYNT_T_SITE_BRANCH = stable
-PRUDYNT_T_VERSION = 5389de6693519e8775b39dbe8e02b79cc19b1c59
+PRUDYNT_T_VERSION = 3c8e8350cffbf5f66856e1a8902fbc22711f8895
 
 PRUDYNT_T_OVERRIDE_FILE = $(BR2_EXTERNAL)/$(CAMERA_SUBDIR)/$(CAMERA)/prudynt-override.json
 
@@ -23,7 +23,7 @@ endif
 ifeq ($(BR2_PACKAGE_PRUDYNT_T_WEBRTC),y)
 #	PRUDYNT_T_DEPENDENCIES += libpeer
 	PRUDYNT_T_DEPENDENCIES += libdatachannel
-	PRUDYNT_T_DEPENDENCIES += mbedtls
+	# libdatachannel brings its own SSL/TLS dependency (OpenSSL or mbedTLS)
 endif
 
 ifeq ($(BR2_PACKAGE_PRUDYNT_T_WEBSOCKETS),y)
@@ -32,8 +32,15 @@ ifeq ($(BR2_PACKAGE_PRUDYNT_T_WEBSOCKETS),y)
 	PRUDYNT_T_CFLAGS += -DUSE_WEBSOCKETS
 endif
 
+# Pre-trigger buffer support
+ifeq ($(BR2_PACKAGE_PRUDYNT_T_PREBUFFER),y)
+	PRUDYNT_T_PREBUFFER_ENABLED = 1
+else
+	PRUDYNT_T_PREBUFFER_ENABLED = 0
+endif
+
 ifeq ($(BR2_TOOLCHAIN_USES_MUSL),y)
-	PRUDYNT_T_DEPENDENCIES += ingenic-musl
+	PRUDYNT_T_DEPENDENCIES += ingenic-musl libexecinfo
 endif
 
 ifeq ($(BR2_TOOLCHAIN_USES_GLIBC),y)
@@ -51,12 +58,19 @@ endif
 
 # Base compiler flags
 PRUDYNT_CFLAGS += \
-	-DNO_OPENSSL=1 \
 	-I$(STAGING_DIR)/usr/include \
 	-I$(STAGING_DIR)/usr/include/liveMedia \
 	-I$(STAGING_DIR)/usr/include/groupsock \
 	-I$(STAGING_DIR)/usr/include/UsageEnvironment \
 	-I$(STAGING_DIR)/usr/include/BasicUsageEnvironment
+
+# OpenSSL support - link against OpenSSL if available and live555 uses it
+ifeq ($(BR2_PACKAGE_OPENSSL),y)
+PRUDYNT_T_DEPENDENCIES += host-pkgconf openssl
+PRUDYNT_LDFLAGS += `$(PKG_CONFIG_HOST_BINARY) --libs openssl`
+else
+PRUDYNT_CFLAGS += -DNO_OPENSSL=1
+endif
 
 # Build mode selection
 ifeq ($(BR2_PACKAGE_PRUDYNT_T_STATIC),y)
@@ -103,12 +117,22 @@ PRUDYNT_CFLAGS += \
 	-DLIBDATACHANNEL_ENABLED=1 \
 	-DLIBPEER_AVAILABLE=1 \
 	-I$(STAGING_DIR)/usr/include
+
+# Link against SSL library based on what's available (OpenSSL preferred)
+ifeq ($(BR2_PACKAGE_OPENSSL),y)
+PRUDYNT_LDFLAGS += -ldatachannel -lusrsctp -lssl -lcrypto -ljuice
+else
 PRUDYNT_LDFLAGS += -ldatachannel -lusrsctp -lmbedtls -lmbedx509 -lmbedcrypto -ljuice
+endif
 endif
 
 PRUDYNT_LDFLAGS += $(TARGET_LDFLAGS) \
 	-L$(STAGING_DIR)/usr/lib \
 	-L$(TARGET_DIR)/usr/lib
+
+ifeq ($(BR2_TOOLCHAIN_USES_MUSL),y)
+	PRUDYNT_LDFLAGS += -lexecinfo
+endif
 
 define PRUDYNT_T_BUILD_CMDS
 	$(MAKE) \
@@ -121,6 +145,7 @@ define PRUDYNT_T_BUILD_CMDS
 		$(if $(BR2_PACKAGE_PRUDYNT_T_FFMPEG),USE_FFMPEG=1) \
 		$(if $(BR2_PACKAGE_PRUDYNT_T_WEBRTC),WEBRTC_ENABLED=1,) \
 		$(if $(BR2_PACKAGE_PRUDYNT_T_WEBSOCKETS),USE_WEBSOCKETS=1,USE_WEBSOCKETS=0) \
+		USE_PREBUFFER=$(PRUDYNT_T_PREBUFFER_ENABLED) \
 		-C $(@D) all commit_tag=$(shell git show -s --format=%h)
 endef
 
@@ -129,6 +154,8 @@ define PRUDYNT_T_INSTALL_TARGET_CMDS
 	$(TARGET_CROSS)strip $(@D)/bin/prudynt -o $(TARGET_DIR)/usr/bin/prudynt
 	chmod 755 $(TARGET_DIR)/usr/bin/prudynt
 	echo "Installed stripped prudynt binary ($$(du -h $(TARGET_DIR)/usr/bin/prudynt | cut -f1))"
+
+	[ -d /nfs ] && cp $(TARGET_DIR)/usr/bin/prudynt /nfs/prudynt || true
 
 	# Copy prudyntctl
 	cp $(@D)/bin/prudyntctl $(TARGET_DIR)/usr/bin/prudyntctl
@@ -223,6 +250,8 @@ define PRUDYNT_T_INSTALL_TARGET_CMDS
 		$(TARGET_DIR)/usr/sbin/send2email
 	$(INSTALL) -D -m 0755 $(PRUDYNT_T_PKGDIR)/files/send2ftp \
 		$(TARGET_DIR)/usr/sbin/send2ftp
+	$(INSTALL) -D -m 0755 $(PRUDYNT_T_PKGDIR)/files/send2gphotos \
+		$(TARGET_DIR)/usr/sbin/send2gphotos
 	$(INSTALL) -D -m 0755 $(PRUDYNT_T_PKGDIR)/files/send2mqtt \
 		$(TARGET_DIR)/usr/sbin/send2mqtt
 	$(INSTALL) -D -m 0755 $(PRUDYNT_T_PKGDIR)/files/send2ntfy \
@@ -251,8 +280,7 @@ define PRUDYNT_T_INSTALL_TARGET_CMDS
 		$(TARGET_DIR)/etc/init.d/S31prudynt
 #	$(INSTALL) -D -m 0755 $(PRUDYNT_T_PKGDIR)/files/S32prudyntwd \
 #		$(TARGET_DIR)/etc/init.d/S32prudyntwd
-	# install service disabled
-	$(INSTALL) -D -m 0644 $(PRUDYNT_T_PKGDIR)/files/S98recorder \
+	$(INSTALL) -D -m 0755 $(PRUDYNT_T_PKGDIR)/files/S98recorder \
 		$(TARGET_DIR)/etc/init.d/S98recorder
 
 	# assets
@@ -262,22 +290,6 @@ define PRUDYNT_T_INSTALL_TARGET_CMDS
 		$(TARGET_DIR)/usr/share/images/thingino_100x30.bgra
 	$(INSTALL) -D -m 0644 $(@D)/res/thingino_210x64.bgra \
 		$(TARGET_DIR)/usr/share/images/thingino_210x64.bgra
-
-	# web ui
-	$(INSTALL) -D -m 0755 $(PRUDYNT_T_PKGDIR)/files/ch0.jpg \
-		$(TARGET_DIR)/var/www/x/ch0.jpg
-	$(INSTALL) -D -m 0755 $(PRUDYNT_T_PKGDIR)/files/ch0.mjpg \
-		$(TARGET_DIR)/var/www/x/ch0.mjpg
-	$(INSTALL) -D -m 0755 $(PRUDYNT_T_PKGDIR)/files/ch1.jpg \
-		$(TARGET_DIR)/var/www/x/ch1.jpg
-	$(INSTALL) -D -m 0755 $(PRUDYNT_T_PKGDIR)/files/ch1.mjpg \
-		$(TARGET_DIR)/var/www/x/ch1.mjpg
-	$(INSTALL) -D -m 0755 $(PRUDYNT_T_PKGDIR)/files/image.cgi \
-		$(TARGET_DIR)/var/www/x/image.cgi
-	$(INSTALL) -D -m 0755 $(PRUDYNT_T_PKGDIR)/files/video.mjpg \
-		$(TARGET_DIR)/var/www/x/video.mjpg
-	$(INSTALL) -D -m 0755 $(PRUDYNT_T_PKGDIR)/files/events.cgi \
-		$(TARGET_DIR)/var/www/x/events.cgi
 
 	# Install debug-specific files and configurations to NFS
 	if [ "$(BR2_PACKAGE_PRUDYNT_T_DEBUG)" = "y" ]; then \

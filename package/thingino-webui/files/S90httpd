@@ -1,0 +1,41 @@
+#!/bin/sh
+
+. /usr/share/common
+
+if [ -f "$PORTAL_MODE_FLAG" ]; then
+	DAEMON_ARGS="-f -c /etc/httpd-portal.conf"
+else
+	DAEMON_ARGS="-f -c /etc/httpd.conf"
+fi
+
+start() {
+	echo_title "Starting HTTPD"
+
+	start_daemon
+}
+
+stop() {
+	echo_title "Stopping HTTPD"
+
+	stop_daemon
+}
+
+case "$1" in
+	start)
+		start
+		;;
+	stop)
+		stop
+		;;
+	restart)
+		stop
+		sleep 1
+		start
+		;;
+	*)
+		echo "Usage: $0 {start|stop|restart}"
+		exit 1
+		;;
+esac
+
+exit 0

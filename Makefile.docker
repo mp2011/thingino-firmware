@@ -9,7 +9,6 @@ USERNAME := builder
 
 # Directories
 WORKSPACE_DIR := $(shell pwd)
-DL_DIR ?= $(HOME)/dl
 
 # Container run command
 ifeq ($(findstring podman,$(CONTAINER_ENGINE)),podman)
@@ -19,11 +18,8 @@ else
 endif
 
 CONTAINER_RUN_OPTS := \
-	-v $(WORKSPACE_DIR):/home/$(USERNAME)/build \
-	-v $(DL_DIR):/home/$(USERNAME)/dl \
-	-w /home/$(USERNAME)/build \
-	-e BR2_DL_DIR=/home/$(USERNAME)/dl \
-	-e HOME=/home/$(USERNAME)/build \
+	-v $(WORKSPACE_DIR):/home/$(USERNAME) \
+	-w /home/$(USERNAME) \
 	-e TERM=xterm-256color
 
 # Interactive container
@@ -55,7 +51,8 @@ docker-shell: docker-build
 docker-make: docker-build
 	$(eval TARGETS := $(if $(filter-out docker-make,$(MAKECMDGOALS)),$(filter-out docker-make,$(MAKECMDGOALS)),all))
 	$(eval CAMERA_ARG := $(if $(CAMERA),CAMERA=$(CAMERA)))
-	@echo "Running make $(CAMERA_ARG) $(TARGETS) in container..."
+	$(eval GROUP_ARG := $(if $(GROUP),GROUP=$(GROUP)))
+	@echo "Running make $(CAMERA_ARG) $(GROUP_ARG) $(TARGETS) in container..."
 	@echo '#!/bin/bash' > /tmp/docker-make-run.sh
 	@echo 'cleanup() {' >> /tmp/docker-make-run.sh
 	@echo '    echo' >> /tmp/docker-make-run.sh
@@ -64,7 +61,7 @@ docker-make: docker-build
 	@echo '    exit 130' >> /tmp/docker-make-run.sh
 	@echo '}' >> /tmp/docker-make-run.sh
 	@echo 'trap cleanup INT TERM' >> /tmp/docker-make-run.sh
-	@echo '$(CONTAINER_RUN_EXEC) $(DOCKER_IMAGE):$(DOCKER_TAG) make $(CAMERA_ARG) $(TARGETS) &' >> /tmp/docker-make-run.sh
+	@echo '$(CONTAINER_RUN_EXEC) $(DOCKER_IMAGE):$(DOCKER_TAG) make $(CAMERA_ARG) $(GROUP_ARG) $(TARGETS) &' >> /tmp/docker-make-run.sh
 	@echo 'wait $$!' >> /tmp/docker-make-run.sh
 	@chmod +x /tmp/docker-make-run.sh
 	@/tmp/docker-make-run.sh
@@ -72,6 +69,8 @@ docker-make: docker-build
 .PHONY: docker-clean
 docker-clean:
 	@echo "Removing Docker image..."
+	@echo "Stopping and removing containers using $(DOCKER_IMAGE):$(DOCKER_TAG)..."
+	@$(CONTAINER_ENGINE) ps -a --filter ancestor=$(DOCKER_IMAGE):$(DOCKER_TAG) -q | xargs -r $(CONTAINER_ENGINE) rm -f 2>/dev/null || true
 	$(CONTAINER_ENGINE) rmi $(DOCKER_IMAGE):$(DOCKER_TAG) || true
 
 .PHONY: docker-info
@@ -115,7 +114,8 @@ docker-clean-build: docker-build
 docker-upgrade-ota: docker-build
 	$(eval IP_ARG := $(if $(IP),IP=$(IP)))
 	$(eval CAMERA_ARG := $(if $(CAMERA),CAMERA=$(CAMERA)))
-	$(CONTAINER_RUN_INTERACTIVE) $(DOCKER_IMAGE):$(DOCKER_TAG) make upgrade_ota $(IP_ARG) $(CAMERA_ARG)
+	$(eval GROUP_ARG := $(if $(GROUP),GROUP=$(GROUP)))
+	$(CONTAINER_RUN_INTERACTIVE) $(DOCKER_IMAGE):$(DOCKER_TAG) make upgrade_ota $(IP_ARG) $(CAMERA_ARG) $(GROUP_ARG)
 
 # Allow make targets to be passed through to container
 %:

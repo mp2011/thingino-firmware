@@ -38,13 +38,13 @@ SCRIPTS_DIR := $(BR2_EXTERNAL)/scripts
 # Buildroot downloads directory
 # can be reused from environment, just export the value:
 # export BR2_DL_DIR = /path/to/your/local/storage
-BR2_DL_DIR ?= $(HOME)/dl
+BR2_DL_DIR ?= $(BR2_EXTERNAL)/dl
 
 # repo data
 GIT_BRANCH := $(shell git rev-parse --abbrev-ref HEAD | tr -d '()' | xargs)
-GIT_HASH="$(shell git show -s --format=%H | cut -c1-7)"
-GIT_DATE="$(TZ=UTC0 git show --quiet --date='format-local:%Y-%m-%d %H:%M:%S UTC' --format="%cd")"
-BUILD_DATE="$(shell env -u SOURCE_DATE_EPOCH TZ=UTC date '+%Y-%m-%d %H:%M:%S %z')"
+GIT_HASH = "$(shell git show -s --format=%H | cut -c1-7)"
+GIT_DATE = "$(TZ=UTC0 git show --quiet --date='format-local:%Y-%m-%d %H:%M:%S UTC' --format="%cd")"
+BUILD_DATE = "$(shell env -u SOURCE_DATE_EPOCH TZ=UTC date '+%Y-%m-%d %H:%M:%S %z')"
 
 ifeq ($(GROUP),github)
 	CAMERA_SUBDIR := configs/github
@@ -139,7 +139,7 @@ endif
 U_BOOT_ENV_TXT = $(OUTPUT_DIR)/uenv.txt
 export U_BOOT_ENV_TXT
 
-UB_ENV_BIN = $(OUTPUT_DIR)/images/u-boot-env.bin
+UB_ENV_BIN := $(OUTPUT_DIR)/images/u-boot-env.bin
 CONFIG_BIN := $(OUTPUT_DIR)/images/config.jffs2
 KERNEL_BIN := $(OUTPUT_DIR)/images/uImage
 ROOTFS_BIN := $(OUTPUT_DIR)/images/rootfs.squashfs
@@ -324,7 +324,7 @@ force-config: buildroot/Makefile $(OUTPUT_DIR)/.keep $(CONFIG_PARTITION_DIR)/.ke
 	$(info * add fragments FRAGMENTS=$(FRAGMENTS) from $(MODULE_CONFIG_REAL))
 	for i in $(FRAGMENTS); do \
 		echo "** add configs/fragments/$$i.fragment"; \
-		cat configs/fragments/$$i.fragment >>$(OUTPUT_DIR)/.config; \
+		sed 's/$$(BR2_HOSTARCH)/$(BR2_HOSTARCH)/g; s/$$(INGENIC_ARCH)/$(INGENIC_ARCH)/g' configs/fragments/$$i.fragment >>$(OUTPUT_DIR)/.config; \
 		echo >>$(OUTPUT_DIR)/.config; \
 	done
 	# add module configuration
@@ -651,21 +651,20 @@ $(U_BOOT_ENV_TXT): $(OUTPUT_DIR)/.config
 
 $(FIRMWARE_BIN_FULL): $(U_BOOT_BIN) $(UB_ENV_BIN) $(CONFIG_BIN) $(KERNEL_BIN) $(ROOTFS_BIN) $(EXTRAS_BIN)
 	$(info -------------------------------- $@)
-	dd if=/dev/zero bs=$(FIRMWARE_FULL_SIZE) skip=0 count=1 status=none | tr '\000' '\377' > $@
+	dd if=/dev/zero bs=$(SIZE_8M) skip=0 count=1 status=none | tr '\000' '\377' > $@
 	dd if=$(U_BOOT_BIN) bs=$(U_BOOT_BIN_SIZE) seek=$(U_BOOT_OFFSET)B count=1 of=$@ conv=notrunc status=none
 	dd if=$(CONFIG_BIN) bs=$(CONFIG_BIN_SIZE) seek=$(CONFIG_OFFSET)B count=1 of=$@ conv=notrunc status=none
 	dd if=$(KERNEL_BIN) bs=$(KERNEL_BIN_SIZE) seek=$(KERNEL_OFFSET)B count=1 of=$@ conv=notrunc status=none
 	dd if=$(ROOTFS_BIN) bs=$(ROOTFS_BIN_SIZE) seek=$(ROOTFS_OFFSET)B count=1 of=$@ conv=notrunc status=none
-	dd if=$(EXTRAS_BIN) bs=$(EXTRAS_BIN_SIZE) seek=$(EXTRAS_OFFSET)B count=1 of=$@ conv=notrunc status=none
+	@if [ $(EXTRAS_BIN_SIZE) -gt 0 ]; then \
+	  dd if=$(EXTRAS_BIN) bs=$(EXTRAS_BIN_SIZE) seek=$(EXTRAS_OFFSET)B count=1 of=$@ conv=notrunc status=none; \
+	fi
 
 $(FIRMWARE_BIN_NOBOOT): $(FIRMWARE_BIN_FULL)
 	$(info -------------------------------- $@)
 	dd if=$(FIRMWARE_BIN_FULL) of=$@ bs=$(FIRMWARE_NOBOOT_SIZE) count=1 skip=$(KERNEL_OFFSET)B
 
-$(U_BOOT_BIN):
-	$(info -------------------------------- $@)
-
-$(UB_ENV_BIN):
+$(UB_ENV_BIN): $(U_BOOT_ENV_TXT)
 	$(info -------------------------------- $@)
 	$(HOST_DIR)/bin/mkenvimage -s $(UB_ENV_PARTITION_SIZE) -o $@ $(U_BOOT_ENV_TXT)
 
@@ -680,23 +679,27 @@ $(CONFIG_BIN): $(CONFIG_PARTITION_DIR)/.keep
 	find $(CONFIG_PARTITION_DIR)/ -name ".*keep" -o -name ".empty" -delete
 	# pack the config partition image
 	$(HOST_DIR)/sbin/mkfs.jffs2 --little-endian --squash --output=$@ --root=$(CONFIG_PARTITION_DIR)/ \
-		--pad=$(CONFIG_PARTITION_SIZE) --eraseblock=$(ALIGN_BLOCK)
+		--eraseblock=$(ALIGN_BLOCK) --pad=$(CONFIG_PARTITION_SIZE)
 
 # create extras partition image
-$(EXTRAS_BIN): $(U_BOOT_BIN) $(ROOTFS_BIN)
+$(EXTRAS_BIN): $(ROOTFS_BIN) $(U_BOOT_BIN)
 	$(info -------------------------------- $@)
 	# remove older image if present
 	if [ -f $@ ]; then rm $@; fi
 	# extract /opt/ from target rootfs to a separare directory
 	# NB! no deletion here. manually remove files /extras/ or use `make cleanbuild`
-	$(RSYNC) $(OUTPUT_DIR)/target/opt/ $(OUTPUT_DIR)/extras/
+	$(RSYNC) --exclude='.gitkeep' $(OUTPUT_DIR)/target/opt/ $(OUTPUT_DIR)/extras/
 	# empty /opt/ in the rootfs
 	rm -rf $(OUTPUT_DIR)/target/opt/*
 	# copy common files
-	$(RSYNC) $(BR2_EXTERNAL)/overlay/opt/ $(OUTPUT_DIR)/extras/
-	# pack the extras partition image
-	$(HOST_DIR)/sbin/mkfs.jffs2 --little-endian --squash --output=$@ --root=$(OUTPUT_DIR)/extras/ \
-		--pad=$(EXTRAS_PARTITION_SIZE) --eraseblock=$(ALIGN_BLOCK)
+	$(RSYNC) --exclude='.gitkeep' $(BR2_EXTERNAL)/overlay/opt/ $(OUTPUT_DIR)/extras/
+	# pack the extras partition image if directory has content, otherwise it will be created on first use
+	if [ -n "$$(find $(OUTPUT_DIR)/extras/ -type f 2>/dev/null)" ]; then \
+		$(HOST_DIR)/sbin/mkfs.jffs2 --little-endian --squash --output=$@ --root=$(OUTPUT_DIR)/extras/ \
+			--eraseblock=$(ALIGN_BLOCK) --pad=$(EXTRAS_PARTITION_SIZE); \
+	else \
+		touch $@; \
+	fi
 
 # rebuild kernel
 $(KERNEL_BIN):

@@ -609,24 +609,27 @@ config BR2_THINGINO_RMEM_MB_AUTO
 	  Automatically determine ISP reserved memory based on sensor configuration
 
 config BR2_THINGINO_RMEM_MB
-	int "RMEM"
+	int "ISP Reserved RAM (rmem), MB"
+	default 10 if BR2_SOC_FAMILY_32MB
 	default 23 if BR2_SOC_FAMILY_64MB
 	default 29 if BR2_SOC_FAMILY_128MB
 	default 64 if BR2_SOC_FAMILY_256MB
+	default 23
 
 config BR2_THINGINO_ISPMEM_MB
-	int "ISP Reserved RAM (ispmem)"
+	int "ISP Reserved RAM (ispmem), MB"
 	depends on BR2_SOC_FAMILY_INGENIC_T10 || BR2_SOC_FAMILY_INGENIC_T20
 	default 8
 	help
 	  Specify reserved memory for the ISP in MB.
 
 config BR2_THINGINO_NMEM_MB
-	int "Neural Network Reserved RAM (nmem)"
+	int "Neural Network Reserved RAM (nmem), MB"
 	depends on BR2_SOC_FAMILY_INGENIC_T40 || BR2_SOC_FAMILY_INGENIC_T41
 	default 23 if BR2_SOC_FAMILY_64MB
 	default 29 if BR2_SOC_FAMILY_128MB
 	default 64 if BR2_SOC_FAMILY_256MB
+	default 23
 	help
 	  Specify reserved memory for the Neural Network module in MB.
 
@@ -1051,12 +1054,14 @@ config BR2_THINGINO_AUDIO
 
 config BR2_THINGINO_AUDIO_GPIO
 	int "Speaker GPIO"
+	depends on BR2_THINGINO_AUDIO
 	default -1
 	help
 	  Speaker GPIO
 
 config BR2_THINGINO_AUDIO_GPIO_LOW
 	bool "Speaker GPIO active LOW"
+	depends on BR2_THINGINO_AUDIO
 	default n
 	help
 	  Speaker GPIO active LOW
@@ -1177,7 +1182,8 @@ config BR2_THINGINO_FLASH_NAND
 endchoice
 
 config FLASH_SIZE_MB
-	bool "Flash chip size, MB"
+	int "Flash chip size, MB"
+	default 8
 	depends on BR2_THINGINO_FLASH_NOR || BR2_THINGINO_FLASH_NAND
 	select BR2_PACKAGE_THINGINO_UBOOT_ENABLE_BAR if (!FLASH_NAND && !BR2_SOC_FAMILY_INGENIC_T40 && !BR2_SOC_FAMILY_INGENIC_T41)
 
@@ -1199,13 +1205,13 @@ choice
 	prompt "Kernel version"
 	help
 	  Select the desired  kernel version
-	default KERNEL_VERSION_4 if BR2_SOC_FAMILY_INGENIC_C100 || BR2_SOC_FAMILY_INGENIC_T41 || BR2_SOC_FAMILY_INGENIC_T40
+	default KERNEL_VERSION_4 if BR2_SOC_FAMILY_INGENIC_C100 || BR2_SOC_FAMILY_INGENIC_T41 || BR2_SOC_FAMILY_INGENIC_T40 || BR2_SOC_FAMILY_INGENIC_T23
 config KERNEL_VERSION_3
 	bool "Kernel 3.10.14"
 	depends on BR2_SOC_FAMILY_INGENIC_T10 || BR2_SOC_FAMILY_INGENIC_T20 || BR2_SOC_FAMILY_INGENIC_T21 || BR2_SOC_FAMILY_INGENIC_T23 || BR2_SOC_FAMILY_INGENIC_T30 || BR2_SOC_FAMILY_INGENIC_T31 || BR2_SOC_FAMILY_INGENIC_C100 || BR2_SOC_FAMILY_INGENIC_T41
 config KERNEL_VERSION_4
 	bool "Kernel 4.4.94"
-	depends on BR2_SOC_FAMILY_INGENIC_T41 || BR2_SOC_FAMILY_INGENIC_T40 || BR2_SOC_FAMILY_INGENIC_T31 || BR2_SOC_FAMILY_INGENIC_C100 || BR2_SOC_FAMILY_INGENIC_A1
+	depends on BR2_SOC_FAMILY_INGENIC_T41 || BR2_SOC_FAMILY_INGENIC_T40 || BR2_SOC_FAMILY_INGENIC_T31 || BR2_SOC_FAMILY_INGENIC_C100 || BR2_SOC_FAMILY_INGENIC_A1 || BR2_SOC_FAMILY_INGENIC_T23
 endchoice
 
 menu "Device Type"

@@ -1,7 +1,7 @@
 THINGINO_ONVIF_SITE_METHOD = git
 THINGINO_ONVIF_SITE = https://github.com/themactep/thingino-onvif
 THINGINO_ONVIF_SITE_BRANCH = master
-THINGINO_ONVIF_VERSION = 3997b4592dcd3025993565d85f0953a7426479b3
+THINGINO_ONVIF_VERSION = 478e17a7a24fb0f3f7026aafd427051a19603ebf
 
 THINGINO_ONVIF_LICENSE = MIT
 THINGINO_ONVIF_LICENSE_FILES = LICENSE
@@ -80,7 +80,7 @@ define THINGINO_ONVIF_INSTALL_TARGET_CMDS
 	ln -sf onvif.cgi $(TARGET_DIR)/var/www/onvif/media2_service
 	ln -sf onvif.cgi $(TARGET_DIR)/var/www/onvif/ptz_service
 
-	ln -sf /var/www/x/image.cgi $(TARGET_DIR)/var/www/onvif/image.cgi
+	ln -sf /var/www/x/ch0.jpg $(TARGET_DIR)/var/www/onvif/image.cgi
 
 	$(INSTALL) -D -m 0755 $(@D)/onvif_notify_server \
 		$(TARGET_DIR)/usr/sbin/onvif_notify_server
