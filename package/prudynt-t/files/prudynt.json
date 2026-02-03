@@ -146,7 +146,7 @@
   "sensor": {
     "model": "gc5603",                       
     "boot": 0,               
-    "fps": 0,               
+    "fps": 25,               
     "gpio_reset": 18,
     "pwdn_gpio" : 19,
     "i2c_bus": 0,
