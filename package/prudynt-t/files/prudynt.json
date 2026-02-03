@@ -144,12 +144,15 @@
     "username": "thingino"
   },
   "sensor": {
-    "boot": 0,
-    "fps": 0,
-    "gpio_reset": -1,
+    "model": "gc5603",                       
+    "boot": 0,               
+    "fps": 0,               
+    "gpio_reset": 18,
+    "pwdn_gpio" : 19,
     "i2c_bus": 0,
-    "mclk": 1,
-    "video_interface": 0
+    "i2c_address": 49,       
+    "mclk": 1,      
+    "video_interface": 0  
   },
   "stream0": {
     "allow_shared": true,

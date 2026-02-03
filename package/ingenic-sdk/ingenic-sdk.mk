@@ -1,7 +1,8 @@
 INGENIC_SDK_SITE_METHOD = git
 INGENIC_SDK_SITE = https://github.com/themactep/ingenic-sdk
 INGENIC_SDK_SITE_BRANCH = master
-INGENIC_SDK_VERSION = 4a9ce6bb3a8f07fbc364624291870bc7e80e7046
+#INGENIC_SDK_VERSION = 4a9ce6bb3a8f07fbc364624291870bc7e80e7046
+INGENIC_SDK_VERSION = 77f3a5784873718e6222c8f49b706a9149c7b792
 
 INGENIC_SDK_LICENSE = GPL-3.0
 INGENIC_SDK_LICENSE_FILES = LICENSE
@@ -193,5 +194,16 @@ define INGENIC_SDK_INSTALL_TARGET_CMDS
 endef
 
 $(eval $(kernel-module))
+
+define INGENIC_SDK_UPDATE_TARGET_MODULES
+	echo "Override tx-isp-t41.ko and snsor to target modules path to $(TARGET_MODULES_PATH)/ingenic/"
+	$(INSTALL) $(INGENIC_SDK_PKGDIR)/files/modules/T41-mpsys-4-4-94.ko $(TARGET_DIR)/lib32/modules/4.4.94/ingenic/T41-mpsys-4-4-94.ko
+	$(INSTALL) $(INGENIC_SDK_PKGDIR)/files/modules/tx-isp-t41.ko $(TARGET_DIR)/lib32/modules/4.4.94/ingenic/tx-isp-t41.ko
+	$(INSTALL) $(INGENIC_SDK_PKGDIR)/files/modules/sensor_gc5603_t41.ko $(TARGET_DIR)/lib32/modules/4.4.94/ingenic/sensor_gc5603_t41.ko
+	$(INSTALL) $(INGENIC_SDK_PKGDIR)/files/modules/gc5603-t41.bin $(TARGET_DIR)/usr/share/sensor/gc5603-t41.bin
+endef
+
+INGENIC_SDK_POST_INSTALL_TARGET_HOOKS += INGENIC_SDK_UPDATE_TARGET_MODULES
+
 $(eval $(generic-package))
 
