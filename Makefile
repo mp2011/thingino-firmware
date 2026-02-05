@@ -28,8 +28,11 @@ CAMERA_IP_ADDRESS := $(IP)
 # Device of SD card
 SDCARD_DEVICE ?= /dev/sdf
 
-# TFTP server IP address to upload compiled images to
-TFTP_IP_ADDRESS ?= 192.168.1.254
+# TFTP server IP address to upload compiled images to (leave empty to disable TFTP copy)
+TFTP_IP_ADDRESS ?=
+
+# TFTP server root directory for local server
+TFTP_ROOT ?= /srv/tftp
 
 # project directories
 BR2_EXTERNAL := $(CURDIR)
@@ -57,30 +60,18 @@ else
 endif
 export CAMERA_SUBDIR
 
+# Support BOARD as an alias for CAMERA (for backward compatibility with workflows)
+ifdef BOARD
+CAMERA ?= $(BOARD)
+endif
+
 # handle the board
 include $(BR2_EXTERNAL)/board.mk
 
 export CAMERA
 
 # working directory - set after CAMERA is defined
-ifeq ($(CAMERA),)
-# If CAMERA is not defined, use a safe default for exempted targets
-ifeq ($(GIT_BRANCH),master)
-OUTPUT_DIR ?= $(HOME)/output
-else ifeq ($(GIT_BRANCH),)
-OUTPUT_DIR ?= $(HOME)/output-junk
-else
-OUTPUT_DIR ?= $(HOME)/output-$(GIT_BRANCH)
-endif
-else
-ifeq ($(GIT_BRANCH),master)
-OUTPUT_DIR ?= $(HOME)/output/$(CAMERA)
-else ifeq ($(GIT_BRANCH),)
-OUTPUT_DIR ?= $(HOME)/output-junk/$(CAMERA)
-else
-OUTPUT_DIR ?= $(HOME)/output-$(GIT_BRANCH)/$(CAMERA)
-endif
-endif
+OUTPUT_DIR ?= $(HOME)/output/$(GIT_BRANCH)/$(CAMERA)-$(KERNEL_VERSION)
 $(info OUTPUT_DIR: $(OUTPUT_DIR))
 export OUTPUT_DIR
 
@@ -216,6 +207,7 @@ BR2_MAKE = $(MAKE) -C $(BR2_EXTERNAL)/buildroot BR2_EXTERNAL=$(BR2_EXTERNAL) O=$
 .PHONY: all bootstrap build build_fast clean clean-nfs-debug cleanbuild defconfig distclean \
 	dev fast help info pack release remove_bins repack sdk toolchain update upboot-ota \
 	upload_tftp upgrade_ota br-% check-config force-config show-config-deps clean-config \
+	tftpd-start tftpd-stop tftpd-restart tftpd-status tftpd-logs \
 	agent-info show-vars
 
 # Default: fast parallel incremental build
@@ -246,6 +238,8 @@ update:
 	@echo "=== UPDATING SUBMODULES ==="
 	git submodule init
 	git submodule update
+	# avoid changes to buildroot from mad agents
+	chmod -R a-w $(BR2_EXTERNAL)/buildroot
 	@$(FIGLET) "$(GIT_BRANCH)"
 
 update_manual:
@@ -315,15 +309,16 @@ check-config: buildroot/Makefile
 # Force configuration regeneration
 force-config: buildroot/Makefile $(OUTPUT_DIR)/.keep $(CONFIG_PARTITION_DIR)/.keep
 	$(info -------------------------------- $@)
-	@$(FIGLET) "$(BOARD)"
+	@$(FIGLET) "$(CAMERA)"
 	@$(FIGLET) "$(GIT_BRANCH)"
 	# delete older config
 	$(info * remove existing .config file)
 	rm -rvf $(OUTPUT_DIR)/.config
-	# gather fragments of a new config
+	# add fragments of a new config
 	$(info * add fragments FRAGMENTS=$(FRAGMENTS) from $(MODULE_CONFIG_REAL))
 	for i in $(FRAGMENTS); do \
 		echo "** add configs/fragments/$$i.fragment"; \
+		echo "# $$i.fragment" >> $(OUTPUT_DIR)/.config; \
 		sed 's/$$(BR2_HOSTARCH)/$(BR2_HOSTARCH)/g; s/$$(INGENIC_ARCH)/$(INGENIC_ARCH)/g' configs/fragments/$$i.fragment >>$(OUTPUT_DIR)/.config; \
 		echo >>$(OUTPUT_DIR)/.config; \
 	done
@@ -552,6 +547,17 @@ pack: $(FIRMWARE_BIN_FULL) $(FIRMWARE_BIN_NOBOOT)
 	@echo "$(FIRMWARE_BIN_FULL)"
 	@echo "Update Image:"
 	@echo "$(FIRMWARE_BIN_NOBOOT)"
+	@echo "--------------------------------"
+ifneq ($(TFTP_IP_ADDRESS),)
+	@echo "Copying images to TFTP root..."
+	@sudo mkdir -p $(TFTP_ROOT)
+	@sudo cp -f $(FIRMWARE_BIN_FULL) $(TFTP_ROOT)/$(FIRMWARE_NAME_FULL)
+	@sudo cp -f $(FIRMWARE_BIN_NOBOOT) $(TFTP_ROOT)/$(FIRMWARE_NAME_NOBOOT)
+	@sudo cp -f $(FIRMWARE_BIN_FULL).sha256sum $(TFTP_ROOT)/$(FIRMWARE_NAME_FULL).sha256sum 2>/dev/null || true
+	@sudo cp -f $(FIRMWARE_BIN_NOBOOT).sha256sum $(TFTP_ROOT)/$(FIRMWARE_NAME_NOBOOT).sha256sum 2>/dev/null || true
+	@echo "TFTP: $(TFTP_ROOT)/$(FIRMWARE_NAME_FULL)"
+	@echo "TFTP: $(TFTP_ROOT)/$(FIRMWARE_NAME_NOBOOT)"
+endif
 
 # rebuild a package with smart configuration check
 rebuild-%: check-config
@@ -598,6 +604,45 @@ upgrade_ota: $(FIRMWARE_BIN_FULL)
 upload_tftp: $(FIRMWARE_BIN_FULL)
 	$(info -------------------------------- $@)
 	busybox tftp -l $(FIRMWARE_BIN_FULL) -r $(FIRMWARE_NAME_FULL) -p $(TFTP_IP_ADDRESS)
+
+# Start standalone TFTP server for serving firmware images
+tftpd-start:
+	$(info -------------------------------- $@)
+	@mkdir -p $(TFTP_ROOT)
+	@if [ "$(TFTP_PORT)" = "69" ] || [ -z "$(TFTP_PORT)" ]; then \
+		echo "Port 69 requires sudo - starting with sudo..."; \
+		sudo -E TFTP_ROOT=$(TFTP_ROOT) TFTP_PORT=$(TFTP_PORT) $(SCRIPTS_DIR)/tftpd-server.sh start; \
+	else \
+		TFTP_ROOT=$(TFTP_ROOT) TFTP_PORT=$(TFTP_PORT) $(SCRIPTS_DIR)/tftpd-server.sh start; \
+	fi
+
+# Stop standalone TFTP server
+tftpd-stop:
+	$(info -------------------------------- $@)
+	@if [ "$(TFTP_PORT)" = "69" ] || [ -z "$(TFTP_PORT)" ]; then \
+		sudo $(SCRIPTS_DIR)/tftpd-server.sh stop; \
+	else \
+		$(SCRIPTS_DIR)/tftpd-server.sh stop; \
+	fi
+
+# Restart standalone TFTP server
+tftpd-restart:
+	$(info -------------------------------- $@)
+	@if [ "$(TFTP_PORT)" = "69" ] || [ -z "$(TFTP_PORT)" ]; then \
+		sudo $(SCRIPTS_DIR)/tftpd-server.sh restart; \
+	else \
+		$(SCRIPTS_DIR)/tftpd-server.sh restart; \
+	fi
+
+# Show standalone TFTP server status
+tftpd-status:
+	$(info -------------------------------- $@)
+	@$(SCRIPTS_DIR)/tftpd-server.sh status
+
+# Show standalone TFTP server logs
+tftpd-logs:
+	$(info -------------------------------- $@)
+	@$(SCRIPTS_DIR)/tftpd-server.sh logs
 
 # download buildroot cache bundle from latest github release
 download-cache:
@@ -698,8 +743,10 @@ $(EXTRAS_BIN): $(ROOTFS_BIN) $(U_BOOT_BIN)
 		$(HOST_DIR)/sbin/mkfs.jffs2 --little-endian --squash --output=$@ --root=$(OUTPUT_DIR)/extras/ \
 			--eraseblock=$(ALIGN_BLOCK) --pad=$(EXTRAS_PARTITION_SIZE); \
 	else \
-		touch $@; \
+		$(HOST_DIR)/sbin/mkfs.jffs2 --little-endian --squash --output=$@ --root=$(OUTPUT_DIR)/extras/ \
+			--eraseblock=$(ALIGN_BLOCK) --pad=$(EXTRAS_PARTITION_SIZE); \
 	fi
+	# FIXME: pack and pad it anyway, otherwise it poisons mtd5
 
 # rebuild kernel
 $(KERNEL_BIN):
@@ -766,7 +813,7 @@ info: defconfig
 
 help:
 	$(info -------------------------------- $@)
-	@echo "\n\
+	@echo -e "\n\
 	Usage:\n\
 	  make bootstrap      install system deps\n\
 	  make update         update local repo and submodules (excludes buildroot)\n\
