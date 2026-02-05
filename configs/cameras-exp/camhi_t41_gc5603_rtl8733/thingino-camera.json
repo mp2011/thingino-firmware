@@ -4,11 +4,11 @@
     "ircut": "49 50",
     "led_r": 79,
     "mmc_cd": 58,
-    "mmc_power": 62,
+    "mmc_power": 62
   },
   "sensor": {      
     "boot": 0,               
-    "fps": 0,     
+    "fps": 25,     
     "gpio_reset": 18,   
     "i2c_bus": 0,                            
     "i2c_address": 49,       

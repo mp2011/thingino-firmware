@@ -5,7 +5,8 @@
 # stock FW psw HI2105CHIP
 # setenv ipaddr 192.168.1.244;setenv serverip 192.168.1.159;env save
 # tftpboot 0x80600000 thingino-camhi_t41_gc5603_rtl8733.bin
-# sf probe; sf erase 0x0 0x1000000;sf write 0x80600000 0x0 0x1000000
+# s#f probe; sf erase 0x0 0x1000000;sf write 0x80600000 0x0 0x1000000
+# sf probe; sf erase 0x0 0x1000000;sf write ${baseaddr} 0x0 ${filesize}
 # rootfs.bin
 # sf probe; sf erase 0x01d0000 0x380000;sf write 0x80600000 0x1d0000 0x380000
 # -- Update U-Boot --
