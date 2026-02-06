@@ -1,0 +1,13 @@
+--- a/4.4/sensor-src/t41/gc5603.c	2026-02-05 21:03:06.348070952 +0000
++++ b/4.4/sensor-src/t41/gc5603.c	2026-02-05 22:02:34.570806559 +0000
+@@ -1050,8 +1050,8 @@
+ 
+ 	rate = private_clk_get_rate(sensor->mclk);
+ 	if (((rate / 1000) % 27000) != 0) {
+-		ret = clk_set_parent(sclka, clk_get(NULL, "epll"));
+-		sclka = private_devm_clk_get(&client->dev, "epll");
++		ret = clk_set_parent(sclka, clk_get(NULL, SEN_TCLK));
++		sclka = private_devm_clk_get(&client->dev, SEN_TCLK);
+ 		if (IS_ERR(sclka)) {
+ 			pr_err("get sclka failed\n");
+ 		} else {
