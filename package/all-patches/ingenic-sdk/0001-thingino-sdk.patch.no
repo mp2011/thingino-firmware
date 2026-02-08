@@ -1,5 +1,5 @@
---- a/4.4/sensor-src/t41/gc5603.c	2026-01-30 07:23:03.000000000 +0000
-+++ b/4.4/sensor-src/t41/gc5603.c	2026-02-06 23:46:35.053696434 +0000
+--- a/4.4/sensor-src/t41/gc5603.c	2026-02-05 20:59:18.215517908 +0000
++++ b/4.4/sensor-src/t41/gc5603.c	2026-02-05 20:59:12.141630784 +0000
 @@ -1027,24 +1027,21 @@
  	}
  
@@ -40,38 +40,3 @@
  
  	if (IS_ERR(sensor->mclk)) {
  		ISP_ERROR("Cannot get sensor input clock cgu_cim\n");
-@@ -1052,21 +1049,20 @@
- 	}
- 
- 	rate = private_clk_get_rate(sensor->mclk);
--	if (((rate / 1000) % 27000) != 0) {
--		ret = clk_set_parent(sclka, clk_get(NULL, "epll"));
--		sclka = private_devm_clk_get(&client->dev, "epll");
--		if (IS_ERR(sclka)) {
--			pr_err("get sclka failed\n");
--		} else {
--			rate = private_clk_get_rate(sclka);
--			if (((rate / 1000) % 27000) != 0) {
--				private_clk_set_rate(sclka, 891000000);
--			}
--		}
--	}
-+    ISP_WARNING("Got sensor clock, current rate: %lu Hz\n", rate);
-+
-+    ret = private_clk_set_rate(sensor->mclk, 24000000);
-+    if (ret < 0) {
-+        ISP_ERROR("Failed to set clock rate to 24MHz, ret=%d\n", ret);
-+    }
-+
-+    ret = private_clk_prepare_enable(sensor->mclk);
-+    if (ret < 0) {
-+        ISP_ERROR("Failed to enable clock, ret=%d\n", ret);
-+    } else {
-+        ISP_WARNING("Successfully enabled sensor clock at 24MHz\n");
-+    }
- 
--	private_clk_set_rate(sensor->mclk, 27000000);
--	private_clk_prepare_enable(sensor->mclk);
- 
- 	reset_gpio = info->rst_gpio;
- 	pwdn_gpio = info->pwdn_gpio;

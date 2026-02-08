@@ -1,6 +1,6 @@
 --- a/4.4/sensor-src/t41/gc5603p0.c	1970-01-01 00:00:00.000000000 +0000
 +++ b/4.4/sensor-src/t41/gc5603p0.c	2026-02-06 07:55:23.011398795 +0000
-@@ -0,0 +1,1753 @@
+@@ -0,0 +1,1771 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/*
 + * gc5603.c
@@ -28,16 +28,22 @@
 +#include <txx-funcs.h>
 +
 +#define SENSOR_NAME "gc5603"
++#define SENSOR_BUS_TYPE TX_SENSOR_CONTROL_INTERFACE_I2C
++#define SENSOR_I2C_ADDRESS 0x31
++#define SENSOR_MAX_WIDTH 2560
++#define SENSOR_MAX_HEIGHT 1440
++#define SENSOR_CHIP_ID 0x5603
 +#define SENSOR_CHIP_ID_H (0x56)
 +#define SENSOR_CHIP_ID_L (0x03)
 +#define SENSOR_REG_END 0xffff
 +#define SENSOR_REG_DELAY 0x0000
 +#define SENSOR_OUTPUT_MAX_WDR_FPS 15
++#define SENSOR_OUTPUT_MAX_FPS 40
 +#define SENSOR_OUTPUT_MIN_FPS 5
 +#define SENSOR_VERSION "H20230817a"
 +
-+static int reset_gpio = -1;
-+static int pwdn_gpio = -1;
++static int reset_gpio = GPIO_PA(18);
++static int pwdn_gpio =  GPIO_PA(19);
 +static int wdr_bufsize = 2 * 4800 * 400;//cache lines corrponding on VPB1
 +static int shvflip = 1;
 +
@@ -45,6 +51,16 @@
 +module_param(fsync_mode, int, S_IRUGO);
 +MODULE_PARM_DESC(fsync_mode, "Sensor Indicates the frame synchronization mode");
 +
++static struct sensor_info sensor_info = {
++	.name = SENSOR_NAME,
++	.chip_id = SENSOR_CHIP_ID,
++	.version = SENSOR_VERSION,
++	.min_fps = SENSOR_OUTPUT_MIN_FPS,
++	.max_fps = SENSOR_OUTPUT_MAX_FPS,
++	.chip_i2c_addr = SENSOR_I2C_ADDRESS,
++	.width = SENSOR_MAX_WIDTH,
++	.height = SENSOR_MAX_HEIGHT,
++};
 +struct regval_list {
 +	uint16_t reg_num;
 +	unsigned char value;
@@ -252,7 +268,7 @@
 +	.cbus_mask = TISP_SBUS_MASK_SAMPLE_8BITS | TISP_SBUS_MASK_ADDR_16BITS,
 +	.dbus_type = TX_SENSOR_DATA_INTERFACE_MIPI,
 +	.data_type = TX_SENSOR_DATA_TYPE_LINEAR,
-+	.cbus_device = 0x31,
++	.cbus_device = SENSOR_I2C_ADDRESS,
 +	.max_again = 390142,
 +	.max_dgain = 0,
 +	.expo_fs = 1,
@@ -1389,8 +1405,8 @@
 +		case 1:
 +		case 2:
 +			if (((rate / 1000) % 27000) != 0) {
-+				ret = clk_set_parent(sclka, clk_get(NULL, SEN_TCLK));
-+				sclka = private_devm_clk_get(&client->dev, SEN_TCLK);
++				ret = clk_set_parent(sclka, clk_get(NULL, "apll"));
++				sclka = private_devm_clk_get(&client->dev, "apll");
 +				if (IS_ERR(sclka)) {
 +					pr_err("get sclka failed\n");
 +				} else {
@@ -1742,12 +1758,14 @@
 +};
 +
 +static __init int init_sensor(void) {
++   sensor_common_init(&sensor_info);
 +	return private_i2c_add_driver(&sensor_driver);
-+}
++};
 +
 +static __exit void exit_sensor(void) {
 +	private_i2c_del_driver(&sensor_driver);
-+}
++   sensor_common_exit();
++};
 +
 +module_init(init_sensor);
 +module_exit(exit_sensor);
