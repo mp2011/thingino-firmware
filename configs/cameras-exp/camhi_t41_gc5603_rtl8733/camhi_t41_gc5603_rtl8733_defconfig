@@ -15,7 +15,7 @@
 # sf write ${baseaddr} 0x0 ${filesize}
 # console=ttyS1,115200n8 mem=90M@0x0 rmem=29M@0x5A00000 nmem=9M@0x7700000 init=/linuxrc
 # scp -r massimiliano@192.168.1.104:/Users/massimiliano/Downloads/d1-t41/extractions/d1-t41.1.img.extracted/550000/squashfs-root/modules/tx-isp-t41.ko /tmp/
-#GPIOs 0-31, platform/10010000.pinctrl, GPA:
+# GPIOs 0-31, platform/10010000.pinctrl, GPA:
 # gpio-15  (                    |cim                 ) in  hi    
 # gpio-18  (                    |gc5603_reset        ) out hi    
 # gpio-19  (                    |gc5603_pwdn         ) out hi    
@@ -34,8 +34,12 @@
 # gpio-81  (                    |?                   ) out hi    
 # gpio-82  (                    |?                   ) out lo    
 
-#GPIOs 96-127, platform/10010000.pinctrl, GPD:
-
+# GPIOs 96-127, platform/10010000.pinctrl, GPD:
+# [resolution=2880x1620]
+# setenv osmem 90M@0x0; setenv rmem 29M@0x5a00000; setenv nmem 9M@0x7700000; saveenv; reset
+# setenv osmem=87M@0x0; setenv rmem 32M@0x5700000; setenv nmem 9M@0x7700000; saveenv; reset
+# setenv osmem=79M@0x0; setenv rmem 40M@0x4f00000; setenv nmem 9M@0x7700000; saveenv; reset
+# setenv osmem=73M@0x0; setenv rmem 49M@0x4600000; setenv nmem 9M@0x7700000; saveenv; reset
 BR2_ETHERNET=y
 BR2_PACKAGE_WIFI=y
 BR2_PACKAGE_WIFI_RTL8733BU=y
@@ -69,7 +73,7 @@ BR2_THINGINO_AUDIO=y
 BR2_THINGINO_SDCARD=y
 BR2_THINGINO_BUTTON=y
 #BR2_THINGINO_RMEM_46=y
-BR2_THINGINO_RMEM_MB=29
+BR2_THINGINO_RMEM_MB=32
 BR2_THINGINO_NMEM_MB=9
 
 #BR2_THINGINO_RMEM_46=y

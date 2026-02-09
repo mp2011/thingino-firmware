@@ -197,12 +197,19 @@ $(eval $(kernel-module))
 define INGENIC_SDK_UPDATE_TARGET_MODULES
 	echo "Override tx-isp-t41.ko and snsor to target modules path to $(TARGET_MODULES_PATH)/ingenic/"
 	$(INSTALL) $(INGENIC_SDK_PKGDIR)/files/modules/T41-mpsys-4-4-94.ko $(TARGET_DIR)/lib32/modules/4.4.94/ingenic/T41-mpsys-4-4-94.ko
-	$(INSTALL) $(INGENIC_SDK_PKGDIR)/files/modules/tx-isp-t41.ko $(TARGET_DIR)/lib32/modules/4.4.94/ingenic/tx-isp-t41.ko
 	$(INSTALL) $(INGENIC_SDK_PKGDIR)/files/modules/sensor_gc5603_t41.ko $(TARGET_DIR)/lib32/modules/4.4.94/ingenic/sensor_gc5603_t41.ko
+endef
+
+define INGENIC_SDK_UPDATE_FIRMWARE
+	echo "Add sensor bin to target $(TARGET_DIR)/usr/share/sensor/"
 	$(INSTALL) $(INGENIC_SDK_PKGDIR)/files/modules/gc5603-t41.bin $(TARGET_DIR)/usr/share/sensor/gc5603-t41.bin
 endef
 
+#	$(INSTALL) $(INGENIC_SDK_PKGDIR)/files/modules/tx-isp-t41.ko $(TARGET_DIR)/lib32/modules/4.4.94/ingenic/tx-isp-t41.ko
+
+
 #INGENIC_SDK_POST_INSTALL_TARGET_HOOKS += INGENIC_SDK_UPDATE_TARGET_MODULES
+INGENIC_SDK_POST_INSTALL_TARGET_HOOKS += INGENIC_SDK_UPDATE_FIRMWARE
 
 $(eval $(generic-package))
 

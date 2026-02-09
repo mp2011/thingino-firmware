@@ -151,12 +151,12 @@
     "pwdn_gpio" : 19,
     "i2c_bus": 0,
     "i2c_address": 49,       
-    "mclk": 1,      
+    "mclk": 0,      
     "video_interface": 0  
   },
   "stream0": {
     "allow_shared": true,
-    "audio_enabled": true,
+    "audio_enabled": false,
     "bitrate": 3000,
     "buffers": 1,
     "enabled": true,
@@ -247,7 +247,7 @@
   },
   "stream1": {
     "allow_shared": true,
-    "audio_enabled": true,
+    "audio_enabled": false,
     "bitrate": 1000,
     "buffers": 1,
     "enabled": true,
