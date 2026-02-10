@@ -156,7 +156,7 @@
   },
   "stream0": {
     "allow_shared": true,
-    "audio_enabled": false,
+    "audio_enabled": true,
     "bitrate": 3000,
     "buffers": 1,
     "enabled": true,
@@ -247,7 +247,7 @@
   },
   "stream1": {
     "allow_shared": true,
-    "audio_enabled": false,
+    "audio_enabled": true,
     "bitrate": 1000,
     "buffers": 1,
     "enabled": true,
