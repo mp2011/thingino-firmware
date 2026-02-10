@@ -6,13 +6,22 @@
     "mmc_cd": 58,
     "mmc_power": 62
   },
-  "sensor": {      
-    "boot": 0,               
-    "fps": 25,     
-    "gpio_reset": 18,   
-    "i2c_bus": 0,                            
-    "i2c_address": 49,       
-    "mclk": 1,              
-    "video_interface": 0
-  }           
+  "sensor": {                 
+    "boot": 0,         
+    "chip_id": 22019,       
+    "fps": 40,          
+    "reset_gpio": 18,  
+    "pwdn_gpio":19,      
+    "height": 1280,            
+    "i2c_address": 49,         
+    "i2c_bus": 0,                   
+    "mclk": 0,
+    "mclk_freq": 27000000,                       
+    "min_fps": 5,              
+    "model": "gc5603",               
+    "version": "H20230817a",        
+    "video_interface": 0,             
+    "width": 1920
+  }         
+
 }

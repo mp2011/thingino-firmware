@@ -147,7 +147,7 @@
     "model": "gc5603",                       
     "boot": 0,               
     "fps": 25,               
-    "gpio_reset": 18,
+    "reset_gpio": 18,
     "pwdn_gpio" : 19,
     "i2c_bus": 0,
     "i2c_address": 49,       
@@ -163,7 +163,7 @@
     "format": "H264",
     "fps": 0,
     "gop": 30,
-    "height": 0,
+    "height": 1280,
     "qp_init": -1,
     "qp_min": -1,
     "qp_max": -1,
@@ -243,7 +243,7 @@
     "scale_height": 0,
     "scale_width": 0,
     "video_enabled": true,
-    "width": 0
+    "width": 1920
   },
   "stream1": {
     "allow_shared": true,

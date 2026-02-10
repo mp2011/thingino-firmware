@@ -43,7 +43,7 @@
 +#define SENSOR_VERSION "H20230817a"
 +
 +static int reset_gpio = GPIO_PA(18);
-+static int pwdn_gpio =  -1;
++static int pwdn_gpio =  GPIO_PA(19);
 +static int wdr_bufsize = 2 * 4800 * 400;//cache lines corrponding on VPB1
 +static int shvflip = 1;
 +
@@ -1427,8 +1427,8 @@
 +
 +	ISP_WARNING("\n====>[default_boot=%d] [resolution=%dx%d] [video_interface=%d] [MCLK=%d] \n", info->default_boot,
 +		    wsize->width, wsize->height, info->video_interface, info->mclk);
-+	reset_gpio = info->rst_gpio;
-+	pwdn_gpio = info->pwdn_gpio;
++	//reset_gpio = info->rst_gpio;
++	//pwdn_gpio = info->pwdn_gpio;
 +
 +	sensor_set_attr(sd, wsize);
 +	sensor->priv = wsize;
