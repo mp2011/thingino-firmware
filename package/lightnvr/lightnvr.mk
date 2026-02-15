@@ -1,7 +1,7 @@
 LIGHTNVR_SITE_METHOD = git
 LIGHTNVR_SITE = https://github.com/opensensor/lightNVR
 LIGHTNVR_SITE_BRANCH = main
-LIGHTNVR_VERSION = bff86d1c9f23da72db87f83cd200278adaa74d53
+LIGHTNVR_VERSION = 72865cf2a3b7ee2470af1fb48397f60e50c891f7
 
 LIGHTNVR_LICENSE = MIT
 LIGHTNVR_LICENSE_FILES = COPYING
@@ -9,7 +9,7 @@ LIGHTNVR_LICENSE_FILES = COPYING
 LIGHTNVR_INSTALL_STAGING = YES
 
 # Dependencies
-LIGHTNVR_DEPENDENCIES = thingino-ffmpeg thingino-libcurl sqlite host-nodejs cjson
+LIGHTNVR_DEPENDENCIES = thingino-ffmpeg thingino-libcurl sqlite host-nodejs cjson libuv
 HOST_LIGHTNVR_DEPENDENCIES = host-nodejs
 
 ifeq ($(BR2_PACKAGE_MBEDTLS),y)
