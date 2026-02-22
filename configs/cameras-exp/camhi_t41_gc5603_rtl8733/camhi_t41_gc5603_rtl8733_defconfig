@@ -3,7 +3,7 @@
 
 # 38 39 40 41 disrupt the network sensor: reset PC28 (92) cim PA15 (15)
 # stock FW psw HI2105CHIP
-# setenv ipaddr 192.168.1.244;setenv serverip 192.168.1.159;env save
+# setenv ipaddr 192.168.178.48;setenv serverip 192.168.178.40;env save
 # tftpboot 0x80600000 thingino-camhi_t41_gc5603_rtl8733.bin
 # s#f probe; sf erase 0x0 0x1000000;sf write 0x80600000 0x0 0x1000000
 # sf probe; sf erase 0x0 0x1000000;sf write ${baseaddr} 0x0 ${filesize}
@@ -32,7 +32,7 @@
 #GPIOs 64-95, platform/10010000.pinctrl, GPC:
 # gpio-76  (                    |?                   ) out hi    
 # gpio-81  (                    |?                   ) out hi    
-# gpio-82  (                    |?                   ) out lo    
+# gpio-82  (                    |?                   ) out lo   ir850 
 
 # GPIOs 96-127, platform/10010000.pinctrl, GPD:
 # [resolution=2880x1620]
@@ -62,14 +62,14 @@ BR2_PACKAGE_THINGINO_KOPT_I2C_BUS2=y
 BR2_THINGINO_SDCARD=y
 BR2_PACKAGE_THINGINO_KOPT_MMC0=y
 BR2_PACKAGE_THINGINO_KOPT_MMC0_PB_4BIT=y
-BR2_AVPU_APLL=y
-BR2_AVPU_CLK_550MHZ=y
-BR2_ISP_CLK_VPLL=y
-BR2_ISP_CLK_300MHZ=y
-BR2_ISP_CLKS_SCLKA=y
-BR2_ISP_CLKS_550MHZ=y
-BR2_ISP_CLKA_SCLKA=y
-BR2_ISP_CLKA_550MHZ=y
+#BR2_AVPU_APLL=y
+#BR2_AVPU_CLK_550MHZ=y
+#BR2_ISP_CLK_VPLL=y
+#BR2_ISP_CLK_300MHZ=y
+#BR2_ISP_CLKS_SCLKA=y
+#BR2_ISP_CLKS_550MHZ=y
+#BR2_ISP_CLKA_SCLKA=y
+#BR2_ISP_CLKA_550MHZ=y
 BR2_THINGINO_AUDIO=y
 BR2_THINGINO_SDCARD=y
 BR2_THINGINO_BUTTON=y
