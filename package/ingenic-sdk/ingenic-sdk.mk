@@ -202,5 +202,11 @@ define INGENIC_SDK_INSTALL_TARGET_CMDS
 endef
 
 $(eval $(kernel-module))
+
+define INGENIC_SDK_UPDATE_FIRMWARE
+	echo "Add sensor bin to target $(TARGET_DIR)/usr/share/sensor/"
+	$(INSTALL) $(INGENIC_SDK_PKGDIR)/files/modules/gc5603-t41.bin $(TARGET_DIR)/usr/share/sensor/gc5603-t41.bin
+endef
+INGENIC_SDK_POST_INSTALL_TARGET_HOOKS += INGENIC_SDK_UPDATE_FIRMWARE
 $(eval $(generic-package))
 
