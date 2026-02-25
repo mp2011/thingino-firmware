@@ -44,4 +44,12 @@ config BR2_LINUX_KERNEL_EXT_THINGINO_KOPT_DTS_A1_SMART_NVR
 
 		Compatible with Ingenic A1N (Tucana) based Smart NVR hardware.
 
+config BR2_LINUX_KERNEL_EXT_THINGINO_KOPT_DTS_CAMHI
+	bool "Camhi T41"
+	help
+		Select this option to use the custom device tree for WyzeCam V3 Pro.
+		This will install the wyze_cam3pro_t40xp.dts file to the kernel's
+		arch/mips/boot/dts/ingenic directory as shark.dts.
+
+		Compatible with Ingenic T41 based hardware.
 endchoice

@@ -1,0 +1,372 @@
+[root@IPCamera:~]# cat /proc/jz/clock/clocks 
+ ID  NAME              FRE          sta     count   parent
+  1 rtc_ext            0.032MHz      enable   0       root
+  2 apll            1104.000MHz      enable   1        ext
+  3 mpll            1400.000MHz      enable   8        ext
+  4 vpll            1080.000MHz      enable   1        ext
+  5 sclka           1104.000MHz      enable   4       apll
+  6 mux_cpu_l2c     1104.000MHz      enable   0      sclka
+  7 mux_ahb0        1400.000MHz      enable   1       mpll
+  8 mux_ahb2        1400.000MHz      enable   2       mpll
+  9 mux_ddr         1400.000MHz      enable   0       mpll
+ 10 mux_rsa         1104.000MHz      enable   0      sclka
+ 11 mux_ssi_slv     1104.000MHz      enable   0      sclka
+ 12 mux_sfc0        1400.000MHz      enable   1       mpll
+ 13 mux_sfc1        1400.000MHz      enable   0       mpll
+ 14 mux_lcd         1080.000MHz      enable   0       vpll
+ 15 mux_msc0        1104.000MHz      enable   2      sclka
+ 16 mux_msc1        1400.000MHz      enable   0       mpll
+ 17 mux_i2st        1104.000MHz      enable   1      sclka
+ 18 mux_i2sr        1104.000MHz      enable   1      sclka
+ 19 mux_ssi         1104.000MHz      enable   0      sclka
+ 20 mux_cim         1080.000MHz      enable   1       vpll
+ 21 mux_ldc         1104.000MHz      enable   0      sclka
+ 22 mux_ispm        1400.000MHz      enable   1       mpll
+ 23 mux_isps        1400.000MHz      enable   1       mpll
+ 24 mux_ispa        1400.000MHz      enable   1       mpll
+ 25 mux_vo          1104.000MHz      enable   0      sclka
+ 26 mux_el200       1400.000MHz      enable   1       mpll
+ 27 mux_macphy      1400.000MHz      enable   1       mpll
+ 28 mux_pwm         1104.000MHz      enable   0      sclka
+ 29 div_ddr          700.000MHz      enable   0    mux_ddr
+ 30 div_rsa         1104.000MHz      enable   0    mux_rsa
+ 31 div_macphy        25.000MHz      enable   3 mux_macphy
+ 32 div_lcd            4.218MHz      enable   0    mux_lcd
+ 33 div_sfc0         100.000MHz      enable   2   mux_sfc0
+ 34 div_sfc1          50.000MHz      enable   0   mux_sfc1
+ 35 div_msc0         276.000MHz      enable   2   mux_msc0
+ 36 div_msc1         350.000MHz      enable   0   mux_msc1
+ 37 div_ssi         1104.000MHz      enable   0    mux_ssi
+ 38 div_ssi_slv     1104.000MHz      enable   0 mux_ssi_slv
+ 39 div_cim           27.000MHz      enable   1    mux_cim
+ 40 div_ldc         1104.000MHz      enable   0    mux_ldc
+ 41 div_isps         466.666MHz      enable   1   mux_isps
+ 42 div_ispa         466.666MHz      enable   5   mux_ispa
+ 43 div_ispm         280.000MHz      enable   2   mux_ispm
+ 44 div_el200        466.666MHz      enable   3  mux_el200
+ 45 div_vo          1104.000MHz      enable   0     mux_vo
+ 46 div_pwm         1104.000MHz      enable   0    mux_pwm
+ 47 div_i2st           2.048MHz      enable   4   mux_i2st
+ 48 div_i2sr           2.048MHz      enable   3   mux_i2sr
+ 49 div_cpu         1104.000MHz      enable   0 mux_cpu_l2c
+ 50 div_l2c          368.000MHz      enable   0 mux_cpu_l2c
+ 51 div_ahb0         233.333MHz      enable   2   mux_ahb0
+ 52 div_ahb2         233.333MHz      enable   1   mux_ahb2
+ 53 div_apb          116.666MHz      enable   6   mux_ahb2
+ 55 div_cpu_l2c_x1  1104.000MHz      enable   0 mux_cpu_l2c
+ 56 div_cpu_l2c_x2  1104.000MHz      enable   0 mux_cpu_l2c
+ 57 gate_ddr         700.000MHz     disable   0    div_ddr
+ 58 gate_tcu         116.666MHz      enable   1    div_apb
+ 59 gate_rtc         116.666MHz     disable   0    div_apb
+ 60 gate_des         116.666MHz     disable   0    div_apb
+ 61 gate_rsa        1104.000MHz     disable   0    div_rsa
+ 62 gate_vo          233.333MHz     disable   0   div_ahb0
+ 63 gate_csi         233.333MHz      enable   1   div_ahb0
+ 64 gate_lcd           4.218MHz     disable   0    div_lcd
+ 65 gate_isp         280.000MHz      enable   1   div_ispm
+ 66 gate_pdma        233.333MHz      enable   1   div_ahb2
+ 67 gate_sfc0        100.000MHz      enable   1   div_sfc0
+ 68 gate_ssi1       1104.000MHz     disable   0    div_ssi
+ 69 gate_uart5       116.666MHz     disable   0    div_apb
+ 70 gate_uart4       116.666MHz     disable   0    div_apb
+ 71 gate_uart3       116.666MHz     disable   0    div_apb
+ 72 gate_uart2       116.666MHz     disable   0    div_apb
+ 73 gate_uart1       116.666MHz      enable   1    div_apb
+ 74 gate_uart0       116.666MHz      enable   1    div_apb
+ 75 gate_sadc        116.666MHz      enable   1    div_apb
+ 76 gate_dmic        233.333MHz     disable   0   div_ahb2
+ 77 gate_aic           2.048MHz      enable   1   div_i2st
+ 78 gate_slv         116.666MHz     disable   0    div_apb
+ 79 gate_i2c2        116.666MHz     disable   0    div_apb
+ 80 gate_i2c1        116.666MHz     disable   0    div_apb
+ 81 gate_i2c0        116.666MHz     disable   0    div_apb
+ 82 gate_ssi0       1104.000MHz     disable   0    div_ssi
+ 83 gate_msc1        350.000MHz     disable   0   div_msc1
+ 84 gate_msc0        276.000MHz      enable   1   div_msc0
+ 85 gate_otg         116.666MHz      enable   1    div_apb
+ 86 gate_hash        233.333MHz     disable   0   div_ahb2
+ 87 gate_efuse       233.333MHz     disable   0   div_ahb2
+ 88 gate_nemc        233.333MHz     disable   0   div_ahb2
+ 89 gate_ivdc        466.666MHz      enable   2   div_ispa
+ 90 gate_cpu        1104.000MHz     disable   0    div_cpu
+ 91 gate_apb0        233.333MHz     disable   0   div_ahb0
+ 92 gate_rjpeg       466.666MHz     disable   0   div_ispa
+ 93 gate_ldc        1104.000MHz     disable   0    div_ldc
+ 94 gate_sfc1         50.000MHz     disable   0   div_sfc1
+ 95 gate_ost          24.000MHz      enable   2        ext
+ 96 gate_ahb0        233.333MHz     disable   0   div_ahb0
+ 97 gate_monitor     233.333MHz     disable   0   div_ahb0
+ 98 gate_i2d         233.333MHz     disable   0   div_ahb0
+ 99 gate_pwm         233.333MHz     disable   0   div_ahb2
+100 gate_drawbox     233.333MHz     disable   0   div_ahb0
+101 gate_aes         233.333MHz     disable   0   div_ahb2
+102 gate_gmac         25.000MHz      enable   1 div_macphy
+103 gate_lzma        466.666MHz     disable   0   div_ispa
+104 gate_ipu         233.333MHz      enable   1   div_ahb0
+105 gate_dtrng       116.666MHz     disable   0    div_apb
+106 gate_el200       466.666MHz      enable   2  div_el200
+107 ce_i2st            2.048MHz      enable   1   div_i2st
+108 ce_i2sr            2.048MHz      enable   1   div_i2sr
+109 gate_usbphy      116.666MHz      enable   1    div_apb
+
+
+[    0.000000] Primary data cache 32kB, 8-way, VIPT, no aliases, linesize 32 bytes
+[    0.000000] Unified secondary cache 128kB 8-way, linesize 64 bytes.
+[    0.000000] PERCPU: Embedded 10 pages/cpu @81118000 s8496 r8192 d24272 u40960
+[    0.000000] pcpu-alloc: s8496 r8192 d24272 u40960 alloc=10*4096
+[    0.000000] pcpu-alloc: [0] 0 [0] 1 
+[    0.000000] Built 1 zonelists in Zone order, mobility grouping off.  Total pages: 22860
+[    0.000000] Kernel command line: console=ttyS1,115200n8 mem=90M@0x0 rmem=29M@0x5A00000 nmem=9M@0x7700000 init=/linuxrc rootfstype=squashfs root=/dev/mtdblock2 rw2
+[    0.000000] PID hash table entries: 512 (order: -1, 2048 bytes)
+[    0.000000] Dentry cache hash table entries: 16384 (order: 4, 65536 bytes)
+[    0.000000] Inode-cache hash table entries: 8192 (order: 3, 32768 bytes)
+[    0.000000] Memory: 86016K/92160K available (3579K kernel code, 237K rwdata, 624K rodata, 224K init, 101K bss, 6144K reserved, 0K cma-reserved)
+[    0.000000] Preemptible hierarchical RCU implementation.
+[    0.000000] parse cpu-intc-iomap, intc define in dt is too large!
+[    0.000000] core irq setup finished and percpu irq inited! NR_IRQS = 419
+[    0.000000] t41 Clock Power Management Unit init sucess!
+[    0.000000] parse cpu-ost-iomap, ost number define in dt is too large!
+[    0.000000] percpu cpu_num:0 timerevent init
+[    0.000000] clockevents_config_and_register success.
+[    0.000000] clocksource: jz_clocksource: mask: 0x7fffffffffffffff max_cycles: 0x588fe9dc0, max_idle_ns: 440795202592 ns
+[    0.000000] sched_clock: 64 bits at 24MHz, resolution 41ns, wraps every 4398046511097ns
+[    0.000361] Calibrating delay loop (skipped) preset value.. 2393.70 BogoMIPS (lpj=11968512)
+[    0.008778] pid_max: default: 32768 minimum: 301
+[    0.013603] Mount-cache hash table entries: 1024 (order: 0, 4096 bytes)
+[    0.020252] Mountpoint-cache hash table entries: 1024 (order: 0, 4096 bytes)
+[    0.027958] [SMP] Prepare 2 cores., cpu: 0
+[    0.105999] [SMP] Booting CPU1 ...
+[    0.109373] CPU1 RESET ERROR PC:FE777FFF
+[    0.109389] Primary instruction cache 32kB, VIPT, 8-way, linesize 32 bytes.
+[    0.109393] Primary data cache 32kB, 8-way, VIPT, no aliases, linesize 32 bytes
+[    0.109397] Unified secondary cache 128kB 8-way, linesize 64 bytes.
+[    0.109457] percpu cpu_num:1 timerevent init
+[    0.109473] clockevents_config_and_register success.
+[    0.109478] CPU1 revision is: 00132100 (Ingenic XBurst@II)
+[    0.109480] FPU revision is: 00f32100
+[    0.109702] Brought up 2 CPUs
+[    0.160526] clocksource: jiffies: mask: 0xffffffff max_cycles: 0xffffffff, max_idle_ns: 19112604462750000 ns
+[    0.170498] futex hash table entries: 512 (order: 2, 16384 bytes)
+[    0.176698] pinctrl core: initialized pinctrl subsystem
+[    0.182218] NET: Registered protocol family 16
+[    0.190929] ingenic pinctrl 10010000.pinctrl: 4 gpio chip add success, pins 128
+[    0.198993] ingenic pinctrl 10010000.pinctrl: ingenic pinctrl probe success
+[    0.212267] dmmu_init 807 PTRS_PER_PTE = 1024
+[    0.216688] Can't analyze schedule() prologue at 8038a304
+[    0.237977] ingenic-dma 13420000.dma: INGENIC SoC DMA initialized
+[    0.245199] usbcore: registered new interface driver usbfs
+[    0.250887] usbcore: registered new interface driver hub
+[    0.256407] usbcore: registered new device driver usb
+[    0.261654] inno phy probe success
+[    0.267750] clocksource: Switched to clocksource jz_clocksource
+[    0.275566] NET: Registered protocol family 2
+[    0.280399] TCP established hash table entries: 1024 (order: 0, 4096 bytes)
+[    0.287399] TCP bind hash table entries: 1024 (order: 1, 8192 bytes)
+[    0.293898] TCP: Hash tables configured (established 1024 bind 1024)
+[    0.300364] UDP hash table entries: 256 (order: 1, 8192 bytes)
+[    0.306219] UDP-Lite hash table entries: 256 (order: 1, 8192 bytes)
+[    0.312758] NET: Registered protocol family 1
+[    0.319255] squashfs: version 4.0 (2021/14/49) Phillip Lougher 
+[    0.325225] jffs2: version 2.2. (NAND) © 2001-2006 Red Hat, Inc.
+[    0.338003] jitterentropy: Initialization failed with host not compliant with requirements: 2
+[    0.347101] io scheduler noop registered
+[    0.351032] io scheduler deadline registered
+[    0.355340] io scheduler cfq registered (default)
+[    0.361711] Ingenic drawbox probe sucess!
+[    0.366028] vpu_register
+[    0.368553] helix probe success
+[    0.372573] dma_malloc of jzaip_t is ok! size = 1024 Bytes
+[    0.378429] dma_malloc of jzaip_f is ok! size = 106600 Bytes
+[    0.384444] dma_malloc of jzaip_p is ok! size = 221184 Bytes
+[    0.390477] @@@ AIP driver init sucess (Version: v20240103) @@@
+[    0.396800] 10030000.serial: ttyS0 at MMIO 0x10030000 (irq = 59, base_baud = 7291666) is a uart0
+[    0.406107] 10031000.serial: ttyS1 at MMIO 0x10031000 (irq = 58, base_baud = 7291666) is a uart1
+[    0.415031] console [ttyS1] enabled
+[    0.422200] bootconsole [early0] disabled
+[    0.432728] ingenic SADC driver registeres over!
+[    0.438167] ingenic sadc aux probe success
+[    0.442762] ingenic sadc aux probe success
+[    0.447342] ingenic sadc aux probe success
+[    0.451977] ingenic sadc aux probe success
+[    0.458674] ingenic-tcu 10002000.tcu: Ingenic TCU driver register completed ret = 0
+[    0.467650] ingenic-sfc 13440000.sfc0: Found Supported nor device, BE = 32K, id = c84018, name = GD25Q127C
+[    0.477926] ingenic-sfc 13440000.sfc0: nor flash now use standard mode!
+[    0.484952] 5 cmdlinepart partitions found on MTD device sfc0_nor
+[    0.491429] Creating 5 MTD partitions on "sfc0_nor":
+[    0.496692] 0x000000000000-0x000000040000 : "boot"
+[    0.503027] 0x000000040000-0x0000001d0000 : "kernel"
+[    0.509497] 0x0000001d0000-0x000000550000 : "root"
+[    0.515728] 0x000000550000-0x000000f70000 : "ipc"
+[    0.521936] 0x000000f70000-0x000001000000 : "appfs"
+[    0.528381] ingenic-sfc 13440000.sfc0: SPI NOR MTD LOAD OK
+[    0.534674] Bus Mode Reg after reset: 0x00020101, cnt=0
+[    0.543762] libphy: ingenic_mii_bus: probed
+[    0.549108] dwc-mac 134b0000.mac: Ingenic on-chip Ethernet MAC driver, Version 1.0
+[    0.557491] dwc2 13500000.otg: Configuration mismatch. Forcing host mode
+[    0.564727] OTG CLK 1f9f0fc4
+[    0.569077] CPCCR CLK 1580
+[    0.770673] dwc2 13500000.otg: DWC OTG Controller
+[    0.775688] dwc2 13500000.otg: new USB bus registered, assigned bus number 1
+[    0.783234] dwc2 13500000.otg: irq 29, io mem 0x00000000
+[    0.789735] hub 1-0:1.0: USB hub found
+[    0.793756] hub 1-0:1.0: 1 port detected
+[    0.798926] ingenic-i2c 10050000.i2c: register i2c0 success.
+[    0.804993] ingenic pinctrl 10010000.pinctrl: pin GPC-8 already requested by 10030000.serial; cannot claim for 10052000.i2c
+[    0.816827] ingenic pinctrl 10010000.pinctrl: pin-72 (10052000.i2c) status -22
+[    0.824508] ingenic pinctrl 10010000.pinctrl: could not request pin 72 (GPC-8) from group i2c2-pc  on device ingenic pinctrl
+[    0.836420] ingenic-i2c 10052000.i2c: Error applying setting, reverse things back
+[    0.844719] ingenic-i2c 10052000.i2c: register i2c2 success.
+[    0.851797] sdhci: Secure Digital Host Controller Interface driver
+[    0.858382] sdhci: Copyright(c) Pierre Ossman
+[    0.863168] ingenic,sdhci 13060000.msc: H20240807a
+[    0.907819] mmc0: SDHCI controller on ingenic-sdhci [13060000.msc] using ADMA
+[    0.919990] mmc0: card removed
+[    0.923569] NET: Registered protocol family 17
+[    0.928327] lib80211: common routines for IEEE802.11 drivers
+[    0.934334] lib80211_crypt: registered algorithm 'NULL'
+[    0.934344] lib80211_crypt: registered algorithm 'WEP'
+[    0.934349] lib80211_crypt: registered algorithm 'CCMP'
+[    0.934354] lib80211_crypt: registered algorithm 'TKIP'
+[    0.935043] soc_vpu probe success,version:1.0.0-03203fd46d
+[    0.955569] VFS: Mounted root (squashfs filesystem) readonly on device 31:2.
+[    0.963243] Freeing unused kernel memory: 224K
+[    1.011343] random: nonblocking pool is initialized
+[    1.167816] usb 1-1: new high-speed USB device number 2 using dwc2
+[    1.404604] jffs2: notice: (364) jffs2_build_xattr_subsystem: complete building xattr subsystem, 0 of xdatum (0 unchecked, 0 orphan) and 0 of xref (0 dead, 0 orp.
+[    2.711801] Bus Mode Reg after reset: 0x00020101, cnt=0
+[    3.894553] watchdog watchdog0: watchdog did not stop!
+[    4.938150] rled driver init successful! 
+[    5.516705] usbcore: registered new interface driver rtl8733bu
+[    5.547980] dwc-mac 134b0000.mac eth0: Link is Up - 100Mbps/Full - flow control off
+[    5.662892] Bluetooth: Core ver 2.21
+[    5.666891] NET: Registered protocol family 31
+[    5.671676] Bluetooth: HCI device and connection manager initialized
+[    5.678461] Bluetooth: HCI socket layer initialized
+[    5.683635] Bluetooth: L2CAP socket layer initialized
+[    5.689037] Bluetooth: SCO socket layer initialized
+[    5.705402] rtk_btusb: Realtek Bluetooth USB driver ver 3.1.210ba4c.20240130-154847
+[    5.705512] rtk_btusb: btusb_probe intf->cur_altsetting->desc.bInterfaceNumber 0
+[    5.713419] rtk_btusb: btusb_probe can_wakeup 0, may wakeup 0
+[    5.713434] rtk_btusb: patch_add
+[    5.713441] rtk_btusb: auto suspend is disabled
+[    5.713450] rtk_btusb: pid = 0xb733
+[    5.713462] rtk_btusb: patch_add: Reset gEVersion to 0xff
+[    5.714375] rtk_btusb: btusb_probe: done
+[    5.714736] usbcore: registered new interface driver rtk_btusb
+[    5.727872] rtk_btusb: btusb_open start
+[    5.727893] rtk_btusb: btusb_open hdev->promisc ==0
+[    5.733095] rtk_btusb: download_patch start
+[    5.733107] rtk_btusb: chip type value: 0x76
+[    5.740162] rtk_btusb: chip_type->status = 0x0, chip_type->chip = 0xbeef
+[    5.740178] rtk_btusb: HCI reset.
+[    5.741507] name : i2c0 nr : 0
+[    5.752131] rtk_btusb: read_ver_rsp->lmp_subver = 0x8723
+[    5.752144] rtk_btusb: read_ver_rsp->hci_rev = 0xf
+[    5.752149] rtk_btusb: patch_entry->lmp_sub = 0x8723
+[    5.752154] rtk_btusb: load_firmware start
+[    5.752159] rtk_btusb: lmp_version = 0x8723
+[    5.752165] rtk_btusb: config filename rtl8733bu_config
+[    5.758051] rtk_btusb: no bdaddr file /opt/bdaddr
+[    5.763038] rtk_btusb: Origin cfg len 14
+[    5.767186] rtk_btusb: 55 ab 23 87 08 00 8d 00 01 fa 8f 00 01 bf
+[    5.767194] rtk_btusb: New cfg len 14
+[    5.771119] rtk_btusb: 55 ab 23 87 08 00 8d 00 01 fa 8f 00 01 bf
+[    5.771138] rtk_btusb: fw name is  rtl8733bu_fw
+[    5.771597] rtk_btusb: This is not 8723a, use new patch style!
+[    5.777863] rtk_btusb: rtk_get_eversion: gEVersion 255
+[    5.779264] rtk_btusb: eversion->status = 0x0, eversion->version = 0x2
+[    5.779276] rtk_btusb: load_firmware: New gEVersion 2
+[    5.779283] rtk_btusb: rtk_get_fw_project_id: opcode 0, len 1, data 19
+[    5.779289] rtk_btusb: lmp_version is 8723, project_id is 19, match!
+[    5.779294] rtk_btusb: fw_version = 0xd9e64d17
+[    5.779299] rtk_btusb: number_of_total_patch = 2
+[    5.779303] rtk_btusb: chipID 3
+[    5.779308] rtk_btusb: patch_length 0xb545
+[    5.779312] rtk_btusb: start_offset 0x00003040
+[    5.779317] rtk_btusb: Svn version: 385336014
+[    5.779322] rtk_btusb: Coexistence: BTCOEX_20230616-0e0e
+[    5.779326] rtk_btusb: buf_len = 0xb553
+[    5.779438] rtk_btusb: fw: exists, config file: exists
+[    5.779445] rtk_btusb: load_firmware done
+[    5.779476] rtk_btusb: download_data start
+[    5.837829] i2c i2c-0: i2c_ingenic_irq 446, I2C transfer error, ABORT interrupt
+[    5.845607] i2c i2c-0: --I2C txabrt:
+[    5.849425] i2c i2c-0: --I2C TXABRT[0]=I2C_TXABRT_ABRT_7B_ADDR_NOACK
+[    5.856188] error: sensor_read,108 ret = -5
+[    5.860644]  sensor_read: addr=0x300a value = 0x0
+[    5.865627] err sensor read addr = 0x300a, value = 0x0
+[    5.957920]  sensor_read: addr=0x3f0 value = 0x56
+[    5.963054]  sensor_read: addr=0x3f1 value = 0x3
+[    5.967980] info: success sensor find : gc5603
+[    5.972692] name : i2c2 nr : 2
+[    5.976129] @@@@ sinfo driver ok(version H20240125a) @@@@@
+[    6.138994] AISP misc device registered
+[    6.149677] @@@@ tx-isp-probe ok (version H20240129a) compiler date: Jan 29 2024 @@@@
+[    6.178174] @@@@ avpu driver ok(version H20220825a) @@@@@
+[    6.189937] @@@@ soc nna probe sucess (Board: T41, Version: H20230310) @@@
+[    6.197348] soc_nna_init success
+[    6.214031] rtk_btusb: download_data done
+[    6.214048] rtk_btusb: HCI reset.
+[    6.226282] rtk_btusb: read_ver_rsp->lmp_subver = 0x4d17
+[    6.226300] rtk_btusb: read_ver_rsp->hci_rev = 0xd9e6
+[    6.226320] rtk_btusb: patch_entry->lmp_sub = 0x8723
+[    6.226350] rtk_btusb: Rtk patch end 0
+[    6.226360] rtk_btusb: chip type value: 0x76
+[    6.230960] rtk_btusb: btusb_open set HCI UP RUNNING
+[    6.236290] rtk_btusb: btusb_open end
+[    6.247844] @@@@@ inner codec power up@@@@@@
+[    6.273534] rtk_btusb: btusb_notify: hci0 evt 3
+[    6.637819] @@@@ audio driver ok(version H20230311a) @@@@@
+[    6.659138] @@@@ multi-process system init sucess (Board: T41, Version: H20230310) @@@
+[    6.667629] nmem_size = 9M
+[    6.670642] nmem_start = 0x7700000
+[    6.679709] audioout driver init successful!
+[    6.702551] reset driver init successful! 
+[    6.729499] ircut driver init successful! 
+[    6.737051] rs485 driver init successful! 
+[    6.765102] wifien driver init successful!
+[    6.772883] wled driver init successful! 
+[    6.780664] extalarm driver init successful! 
+[    6.788674] relay driver init successful! 
+[    8.309011] rtk_btusb: btusb_flush add delay 
+[    8.330772] rtk_btusb: btusb_close
+[    9.200185] start_addr=(0x0), end_addr=(0x20000), buffer_size=(0x20000), smp_number_max=(16384)
+[   17.604098] probe ok ------->gc5603
+[   17.604203] set sensor mclk(0) gpio
+[   17.607954] 
+[   17.607954] ====>[default_boot=0] [resolution=2880x1620] [video_interface=0] [MCLK=0] 
+[   17.747912] -----gc5603_detect: 858 ret = 0, v = 0x56
+[   17.753411] -----gc5603_detect: 864 ret = 0, v = 0x03
+[   17.758790] gc5603 chip found @ 0x31 (i2c0)
+[   17.758790]  sensor drv version H20230720a Create framechan0 OK! 
+[   17.768752]  Create framechan1 OK! 
+[   17.772689]  Create framechan2 OK! 
+[   17.809802] Ivdc init! direct_mode is 1
+[   17.864204] gc5603 stream on
+[   17.899651] ===========> fps = 0x190002
+[   18.509137] soc_nna_open: open sucess
+[   18.559766] NMEM_INIT size: 0x900000
+[   18.563683] remain size = 0x900000, alloc_size = 0x900000
+
+[root@IPCamera:~]# mount -t debugfs none /sys/kernel/debug; cat /sys/kernel/debug/gpio
+GPIOs 0-31, platform/10010000.pinctrl, GPA:
+ gpio-15  (                    |cim                 ) in  hi    
+ gpio-18  (                    |gc5603_reset        ) out hi    
+ gpio-19  (                    |gc5603_pwdn         ) out hi    
+
+GPIOs 32-63, platform/10010000.pinctrl, GPB:
+ gpio-49  (                    |?                   ) out lo    
+ gpio-50  (                    |?                   ) out lo    
+ gpio-57  (                    |?                   ) out lo    
+ gpio-58  (                    |SDHCI EXT CD        ) in  hi IRQ
+ gpio-59  (                    |?                   ) in  hi    
+ gpio-61  (                    |?                   ) out lo    
+ gpio-63  (                    |gpio_spk_en         ) out lo    
+
+GPIOs 64-95, platform/10010000.pinctrl, GPC:
+ gpio-76  (                    |?                   ) out hi    
+ gpio-81  (                    |?                   ) out hi    
+ gpio-82  (                    |?                   ) out lo    
+
+GPIOs 96-127, platform/10010000.pinctrl, GPD:
+[root@IPCamera:~]# 
