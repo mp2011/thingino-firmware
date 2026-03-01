@@ -5,8 +5,8 @@
 # stock FW psw HI2105CHIP
 # setenv ipaddr 192.168.178.48;setenv serverip 192.168.178.40;env save
 # tftpboot 0x80600000 thingino-camhi_t41_gc5603_rtl8733.bin
-# s#f probe; sf erase 0x0 0x1000000;sf write 0x80600000 0x0 0x1000000
-# sf probe; sf erase 0x0 0x1000000;sf write ${baseaddr} 0x0 ${filesize}
+# stock firmware: sf probe; sf erase 0x0 0x1000000;sf write 0x80600000 0x0 0x1000000
+# thingino: sf probe; sf erase 0x0 0x1000000;sf write ${baseaddr} 0x0 ${filesize}
 # rootfs.bin
 # sf probe; sf erase 0x01d0000 0x380000;sf write 0x80600000 0x1d0000 0x380000
 # -- Update U-Boot --
@@ -29,7 +29,7 @@
 # gpio-61  (                    |?                   ) out lo    
 # gpio-63  (                    |gpio_spk_en         ) out lo    
 
-#GPIOs 64-95, platform/10010000.pinctrl, GPC:
+#GPIOs 64-95, platform/10010000.pinctrl, GPC:HI2105CHIP
 # gpio-76  (                    |?                   ) out hi    
 # gpio-81  (                    |?                   ) out hi    
 # gpio-82  (                    |?                   ) out lo   ir850 
