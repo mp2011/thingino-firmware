@@ -5,7 +5,8 @@ LINUX_EXTENSIONS += thingino-kopt
 THINGINO_DTS_MAPPINGS = \
 	WYZEC3P|wyze_cam3pro_t40xp|shark \
 	A1_SMART_NVR|smart_nvr_a1n_eth|tucana \
-	CAMHI|camhi_t41|marmot
+	CAMHI|camhi_t41|marmot \
+    IGETC5PT|iget_c5pt_t41lq|marmot
 
 define THINGINO_KOPT_PREPARE_KERNEL
 	$(foreach mapping,$(THINGINO_DTS_MAPPINGS),\
