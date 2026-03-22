@@ -1427,8 +1427,8 @@
 +
 +	ISP_WARNING("\n====>[default_boot=%d] [resolution=%dx%d] [video_interface=%d] [MCLK=%d] [MCLK_RATE=%d]\n", info->default_boot,
 +		    wsize->width, wsize->height, info->video_interface, info->mclk, private_clk_get_rate(sensor->mclk));
-+	reset_gpio = info->rst_gpio;
-+	pwdn_gpio = info->pwdn_gpio;
++	reset_gpio = GPIO_PA(18);
++	pwdn_gpio = GPIO_PA(19);
 +
 +	sensor_set_attr(sd, wsize);
 +	sensor->priv = wsize;
