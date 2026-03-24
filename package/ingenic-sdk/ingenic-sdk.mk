@@ -1,7 +1,7 @@
 INGENIC_SDK_SITE_METHOD = git
 INGENIC_SDK_SITE = https://github.com/themactep/ingenic-sdk
 INGENIC_SDK_SITE_BRANCH = master
-INGENIC_SDK_VERSION = 249f859b18589666ee16ff5328e0fd90a227119c
+INGENIC_SDK_VERSION = 688d8570647c21f2ed075dd6bf553484c0b66712
 
 INGENIC_SDK_LICENSE = GPL-3.0
 INGENIC_SDK_LICENSE_FILES = LICENSE
@@ -36,7 +36,8 @@ ifneq ($(SENSOR_1_MODEL),)
 		SENSOR_1_BIN_NAME      = $(patsubst %s0,%,$(SENSOR_1_MODEL))
 		MULTI_SENSOR_1_ENABLED = SENSOR_1_MODEL=$(SENSOR_1_MODEL)
 		MULTI_SENSOR_2_ENABLED = SENSOR_2_MODEL=$(SENSOR_2_MODEL)
-		SENSOR_2_CONFIG_NAME   = $(SENSOR_2_MODEL)-$(SOC_FAMILY).bin
+		SENSOR_2_BIN_NAME      = $(patsubst %s1,%,$(SENSOR_2_MODEL))
+		SENSOR_2_CONFIG_NAME   = $(patsubst %s1,%,$(SENSOR_2_MODEL))-$(SOC_FAMILY).bin
 	else
 		MULTI_SENSOR_ENABLED =
 		SENSOR_1_BIN_NAME = $(SENSOR_1_MODEL)
@@ -90,6 +91,9 @@ define INSTALL_SENSOR_BIN
 		if [ -f $(@D)/sensor-iq/$(SOC_FAMILY)/$(2)-cust.bin ]; then \
 			$(INSTALL) -D -m 0644 $(@D)/sensor-iq/$(SOC_FAMILY)/$(2)-cust.bin \
 				$(TARGET_DIR)/usr/share/sensor/$(patsubst %.bin,$(2)-cust-$(SOC_FAMILY).bin,$(3)); \
+		fi; \
+		if [ "$(1)" != "$(2)" ]; then \
+			ln -sf $(3) $(TARGET_DIR)/usr/share/sensor/$(1)-$(SOC_FAMILY).bin; \
 		fi; \
 		$(if $(filter-out $(SENSOR_2_MODEL),$(1)),echo $(1) > $(TARGET_DIR)/usr/share/sensor/model;) \
 	fi

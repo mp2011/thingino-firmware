@@ -39,6 +39,8 @@ SCRIPTS_DIR := $(BR2_EXTERNAL)/scripts
 # export BR2_DL_DIR=/path/to/your/local/storage
 BR2_DL_DIR ?= $(BR2_EXTERNAL)/dl
 
+THINGINO_USER_DIR ?= $(BR2_EXTERNAL)/user
+
 # repo data
 GIT_BRANCH := $(shell git rev-parse --abbrev-ref HEAD | tr -d '()' | xargs)
 GIT_HASH = "$(shell git show -s --format=%H | cut -c1-7)"
@@ -46,11 +48,11 @@ GIT_DATE = "$(TZ=UTC0 git show --quiet --date='format-local:%Y-%m-%d %H:%M:%S UT
 BUILD_DATE = "$(shell env -u SOURCE_DATE_EPOCH TZ=UTC date '+%Y-%m-%d %H:%M:%S %z')"
 
 ifeq ($(GROUP),github)
-	CAMERA_SUBDIR := configs/github
+CAMERA_SUBDIR := configs/github
 else ifeq ($(GROUP),)
-	CAMERA_SUBDIR := configs/cameras
+CAMERA_SUBDIR := configs/cameras
 else
-	CAMERA_SUBDIR := configs/cameras-$(GROUP)
+CAMERA_SUBDIR := configs/cameras-$(GROUP)
 endif
 export CAMERA_SUBDIR
 
@@ -210,7 +212,22 @@ BR2_MAKE = $(MAKE) -C $(BR2_EXTERNAL)/buildroot \
 .PHONY: all bootstrap build build_fast clean clean-nfs-debug cleanbuild defconfig distclean \
 	dev fast help info pack release remove_bins repack sdk toolchain update upboot-ota \
 	upload_tftp upgrade_ota br-% check-config force-config show-config-deps clean-config \
-	tftpd-start tftpd-stop tftpd-restart tftpd-status tftpd-logs show-vars
+	tftpd-start tftpd-stop tftpd-restart tftpd-status tftpd-logs show-vars run
+
+# Run a binary under QEMU in the build sysroot.
+# Usage: CAMERA=<camera> make run CMD="/bin/ffmpeg --help"  (binary with args)
+#        CAMERA=<camera> make run /bin/ffmpeg               (binary only, no args)
+CMD ?=
+ifeq (run,$(firstword $(MAKECMDGOALS)))
+  ifneq ($(CMD),)
+    _RUN_CMD := $(CMD)
+  else
+    _RUN_CMD := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
+    ifneq ($(_RUN_CMD),)
+      $(eval $(_RUN_CMD):;@:)
+    endif
+  endif
+endif
 
 # Default: fast parallel incremental build
 all: defconfig build_fast pack
@@ -252,7 +269,7 @@ update:
 	git submodule init
 	git submodule update
 	# avoid changes to buildroot from mad agents
-	chmod -R a-w $(BR2_EXTERNAL)/buildroot
+	# chmod -R a-w $(BR2_EXTERNAL)/buildroot
 	@$(FIGLET) "$(GIT_BRANCH)"
 
 update_manual:
@@ -282,8 +299,8 @@ CONFIG_DEPS_FILE = $(OUTPUT_DIR)/.config.deps
 CONFIG_FRAGMENT_FILES = $(addprefix configs/fragments/,$(addsuffix .fragment,$(FRAGMENTS)))
 CONFIG_INPUT_FILES = $(CONFIG_FRAGMENT_FILES) $(CAMERA_CONFIG_REAL)
 ifeq ($(RELEASE),0)
-ifneq ($(wildcard $(BR2_EXTERNAL)/user/local.fragment),)
-CONFIG_INPUT_FILES += $(BR2_EXTERNAL)/user/local.fragment
+ifneq ($(wildcard $(THINGINO_USER_DIR)/local.fragment),)
+CONFIG_INPUT_FILES += $(THINGINO_USER_DIR)/local.fragment
 endif
 ifneq ($(wildcard $(BR2_EXTERNAL)/local.mk),)
 CONFIG_INPUT_FILES += $(BR2_EXTERNAL)/local.mk
@@ -335,8 +352,8 @@ force-config: buildroot/Makefile $(OUTPUT_DIR)/.keep $(CONFIG_PARTITION_DIR)/.ke
 	# add camera configuration
 	cat $(CAMERA_CONFIG_REAL) >>$(OUTPUT_DIR)/.config
 	if [ $(RELEASE) -ne 1 ]; then \
-		if [ -f $(BR2_EXTERNAL)/user/local.fragment ]; then \
-			cat $(BR2_EXTERNAL)/user/local.fragment >>$(OUTPUT_DIR)/.config; \
+		if [ -f $(THINGINO_USER_DIR)/local.fragment ]; then \
+			cat $(THINGINO_USER_DIR)/local.fragment >>$(OUTPUT_DIR)/.config; \
 		fi; \
 		if [ -f $(BR2_EXTERNAL)/local.mk ]; then \
 			cp -f $(BR2_EXTERNAL)/local.mk $(OUTPUT_DIR)/local.mk; \
@@ -385,10 +402,10 @@ edit:
 			"2") FILE="$(MODULE_CONFIG_REAL)" ;; \
 			"3") FILE="$(BR2_EXTERNAL)/$(CAMERA_SUBDIR)/$(CAMERA)/$(CAMERA).config" ;; \
 			"4") FILE="$(BR2_EXTERNAL)/$(CAMERA_SUBDIR)/$(CAMERA)/$(CAMERA).uenv.txt" ;; \
-			"5") FILE="$(BR2_EXTERNAL)/user/local.fragment" ;; \
-			"6") FILE="$(BR2_EXTERNAL)/user/local.config" ;; \
+			"5") FILE="$(THINGINO_USER_DIR)/local.fragment" ;; \
+			"6") FILE="$(THINGINO_USER_DIR)/local.config" ;; \
 			"7") FILE="$(BR2_EXTERNAL)/local.mk" ;; \
-			"8") FILE="$(BR2_EXTERNAL)/user/local.uenv.txt" ;; \
+			"8") FILE="$(THINGINO_USER_DIR)/local.uenv.txt" ;; \
 			*) echo "Invalid option"; continue ;; \
 		esac; \
 		\
@@ -411,13 +428,13 @@ edit-localmk:
 	$(call edit_file,$@,$(BR2_EXTERNAL)/local.mk)
 
 edit-localconfig:
-	$(call edit_file,$@,$(BR2_EXTERNAL)/user/local.config)
+	$(call edit_file,$@,$(THINGINO_USER_DIR)/local.config)
 
 edit-localfragment:
-	$(call edit_file,$@,$(BR2_EXTERNAL)/user/local.fragment)
+	$(call edit_file,$@,$(THINGINO_USER_DIR)/local.fragment)
 
 edit-localuenv:
-	$(call edit_file,$@,$(BR2_EXTERNAL)/user/local.uenv.txt)
+	$(call edit_file,$@,$(THINGINO_USER_DIR)/local.uenv.txt)
 
 # Configuration debugging and maintenance targets
 show-config-deps:
@@ -686,7 +703,7 @@ $(U_BOOT_ENV_TXT): $(OUTPUT_DIR)/.config
 	touch $@
 	grep -v '^#' $(BR2_EXTERNAL)/configs/common.uenv.txt | awk NF | tee -a $@
 	grep -v '^#' $(BR2_EXTERNAL)/$(CAMERA_SUBDIR)/$(CAMERA)/$(CAMERA).uenv.txt | awk NF | tee -a $@
-	grep -v '^#' $(BR2_EXTERNAL)/user/local.uenv.txt | awk NF | tee -a $@
+	grep -v '^#' $(THINGINO_USER_DIR)/local.uenv.txt | awk NF | tee -a $@
 	sort -u -o $@ $@
 
 $(FIRMWARE_BIN_FULL): $(U_BOOT_BIN) $(UB_ENV_BIN) $(CONFIG_BIN) $(KERNEL_BIN) $(ROOTFS_BIN) $(EXTRAS_BIN)
@@ -720,7 +737,7 @@ $(CONFIG_BIN): $(CONFIG_PARTITION_DIR)/.keep
 	# remove older image if present
 	if [ -f $@ ]; then rm $@; fi
 	# syncronize overlay files
-	$(RSYNC) --delete $(BR2_EXTERNAL)/user/overlay/ $(CONFIG_PARTITION_DIR)/
+	$(RSYNC) --delete $(THINGINO_USER_DIR)/overlay/ $(CONFIG_PARTITION_DIR)/
 	# delete stub files
 	find $(CONFIG_PARTITION_DIR)/ -name ".*keep" -o -name ".empty" -delete
 	# pack the config partition image
@@ -738,16 +755,15 @@ $(EXTRAS_BIN): $(ROOTFS_BIN) $(U_BOOT_BIN)
 	# empty /opt/ in the rootfs
 	rm -rf $(OUTPUT_DIR)/target/opt/*
 	# copy common files
-	$(RSYNC) --exclude='.gitkeep' $(BR2_EXTERNAL)/user/opt/ $(OUTPUT_DIR)/extras/
+	$(RSYNC) --exclude='.gitkeep' $(THINGINO_USER_DIR)/opt/ $(OUTPUT_DIR)/extras/
 	# pack the extras partition image if directory has content, otherwise it will be created on first use
 	if [ -n "$$(find $(OUTPUT_DIR)/extras/ -type f 2>/dev/null)" ]; then \
 		$(HOST_DIR)/sbin/mkfs.jffs2 --little-endian --squash --output=$@ --root=$(OUTPUT_DIR)/extras/ \
 			--eraseblock=$(ALIGN_BLOCK) --pad=$(EXTRAS_PARTITION_SIZE); \
 	else \
 		$(HOST_DIR)/sbin/mkfs.jffs2 --little-endian --squash --output=$@ --root=$(OUTPUT_DIR)/extras/ \
-			--eraseblock=$(ALIGN_BLOCK) --pad=$(EXTRAS_PARTITION_SIZE); \
+			--eraseblock=$(ALIGN_BLOCK); \
 	fi
-	# FIXME: pack and pad it anyway, otherwise it poisons mtd5
 
 # rebuild kernel
 $(KERNEL_BIN):
@@ -831,6 +847,7 @@ help:
 	  make rebuild-<pkg>  perform a clean package rebuild for <pkg>\n\
 	  make show-vars      print key build variables\n\
 	  make help           print this help\n\
+	  make run <bin>      run a target binary via QEMU (e.g. make run bin/ffmpeg)\n\
 	  \n\
 	Configuration Management:\n\
 	  make defconfig      configure buildroot (auto-detects changes)\n\
@@ -863,3 +880,7 @@ show-vars:
 	@echo "CAMERA        = $(CAMERA)";
 	@echo "HOST_DIR      = $(HOST_DIR)";
 	@echo "BR2_MAKE      = $(BR2_MAKE)";
+
+run:
+	$(info -------------------------------- $@)
+	$(SCRIPTS_DIR)/qemu_run.sh $(OUTPUT_DIR)/target $(_RUN_CMD)

@@ -2,14 +2,6 @@
 
 . /usr/share/common
 
-SENSOR_FILE="/etc/sensor/model"
-if [ -f "$SENSOR_FILE" ]; then
-	SENSOR="$(cat "$SENSOR_FILE")"
-	export SENSOR
-else
-	echo_info "Cannot find $SENSOR_FILE"
-fi
-
 TZCODE_FILE="/etc/TZ"
 if [ -f "$TZCODE_FILE" ]; then
 	TZ="$(cat $TZCODE_FILE)"
