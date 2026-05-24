@@ -21,14 +21,30 @@ BUILD_ID="${GIT_BRANCH}+${GIT_HASH:0:7}, ${BUILD_TIME}"
 COMMIT_ID="${GIT_BRANCH}+${GIT_HASH:0:7}, ${GIT_TIME}"
 cd -
 
-if grep -q "BR2_TOOLCHAIN_USES_GLIBC=y" $BR2_CONFIG; then
-	TOOLCHAIN="glibc"
-elif grep -q "BR2_TOOLCHAIN_USES_UCLIBC=y" $BR2_CONFIG; then
-	TOOLCHAIN="uclibc"
-elif grep -q "BR2_TOOLCHAIN_USES_MUSL=y" $BR2_CONFIG; then
-	TOOLCHAIN="musl"
+if grep -q "^BR2_TOOLCHAIN_USES_GLIBC=y" "$BR2_CONFIG"; then
+	LIBC="glibc"
+elif grep -q "^BR2_TOOLCHAIN_USES_UCLIBC=y" "$BR2_CONFIG"; then
+	LIBC="uclibc"
+elif grep -q "^BR2_TOOLCHAIN_USES_MUSL=y" "$BR2_CONFIG"; then
+	LIBC="musl"
 else
-	echo "Unknown"
+	LIBC="unknown"
+fi
+
+if grep -q "^BR2_TOOLCHAIN_EXTERNAL=y" "$BR2_CONFIG"; then
+	TOOLCHAIN_TYPE="external"
+elif grep -q "^BR2_TOOLCHAIN_BUILDROOT=y" "$BR2_CONFIG"; then
+	TOOLCHAIN_TYPE="buildroot"
+else
+	TOOLCHAIN_TYPE="unknown"
+fi
+
+TOOLCHAIN_GCC=$(sed -rn 's/^BR2_GCC_VERSION="([^"]+)"/\1/p' "$BR2_CONFIG" | tail -n1)
+if [ -z "$TOOLCHAIN_GCC" ]; then
+	TOOLCHAIN_GCC=$(sed -rn 's/^BR2_TOOLCHAIN_(EXTERNAL|BUILDROOT)_GCC_([0-9]+)=y$/\2/p' "$BR2_CONFIG" | tail -n1)
+fi
+if [ -z "$TOOLCHAIN_GCC" ]; then
+	TOOLCHAIN_GCC="unknown"
 fi
 
 #
@@ -60,9 +76,12 @@ LOGO=thingino-logo-icon
 ANSI_COLOR=\"1;34\"
 HOME_URL=\"https://thingino.com/\"
 ARCHITECTURE=mips
-TOOLCHAIN=${TOOLCHAIN}
+LIBC=${LIBC}
+TOOLCHAIN=${LIBC}
+TOOLCHAIN_TYPE=${TOOLCHAIN_TYPE}
+TOOLCHAIN_GCC=${TOOLCHAIN_GCC}
 SOC=${SOC_FAMILY}
-SOC_ARCH=${INGENIC_ARCH}
+SOC_ARCH=${SOC_ARCH}
 IMAGE_ID=${IMAGE_ID}
 BUILD_ID=\"${BUILD_ID}\"
 BUILD_TIME=\"${BUILD_TIME}\"
@@ -87,18 +106,36 @@ rm -f ${TARGET_DIR}/usr/bin/ldd
 echo '#!/bin/sh
 LD_TRACE_LOADED_OBJECTS=1 exec "$@"' > ${TARGET_DIR}/usr/bin/ldd && chmod +x ${TARGET_DIR}/usr/bin/ldd
 
+# Resolve the real on-disk lib directory: with merged-usr rootfs, /lib is a
+# symlink to /usr/lib. Operate on /usr/lib directly so we never accidentally
+# convert the symlink to a real directory or create broken literal-glob
+# symlinks when the pattern fails to expand.
+if [ -L "${TARGET_DIR}/lib" ] || [ ! -d "${TARGET_DIR}/lib" ]; then
+	LIB_DIR="${TARGET_DIR}/usr/lib"
+else
+	LIB_DIR="${TARGET_DIR}/lib"
+fi
+
 if grep -q "^BR2_TOOLCHAIN_USES_MUSL=y" $BR2_CONFIG >/dev/null; then
-	ln -srf ${TARGET_DIR}/lib/libc.so ${TARGET_DIR}/lib/ld-uClibc.so.0
+	if [ -e "${LIB_DIR}/libc.so" ]; then
+		ln -srf "${LIB_DIR}/libc.so" "${LIB_DIR}/ld-uClibc.so.0"
+	fi
 fi
 
 if grep -q "^BR2_TOOLCHAIN_USES_UCLIBC=y" $BR2_CONFIG >/dev/null; then
-	ln -srf ${TARGET_DIR}/lib/libuClibc*.so ${TARGET_DIR}/lib/libpthread.so.0
-	ln -srf ${TARGET_DIR}/lib/libuClibc*.so ${TARGET_DIR}/lib/libdl.so.0
-	ln -srf ${TARGET_DIR}/lib/libuClibc*.so ${TARGET_DIR}/lib/libm.so.0
+	for libuclibc in "${LIB_DIR}"/libuClibc-*.so; do
+		[ -e "$libuclibc" ] || continue
+		ln -srf "$libuclibc" "${LIB_DIR}/libpthread.so.0"
+		ln -srf "$libuclibc" "${LIB_DIR}/libdl.so.0"
+		ln -srf "$libuclibc" "${LIB_DIR}/libm.so.0"
+		break
+	done
 fi
 
 if grep -q "^BR2_TOOLCHAIN_USES_GLIBC=y" $BR2_CONFIG >/dev/null; then
-	ln -srf ${TARGET_DIR}/lib/libc.so.6 ${TARGET_DIR}/lib/libpthread.so.0
+	if [ -e "${LIB_DIR}/libc.so.6" ]; then
+		ln -srf "${LIB_DIR}/libc.so.6" "${LIB_DIR}/libpthread.so.0"
+	fi
 fi
 
 #

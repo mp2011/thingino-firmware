@@ -45,7 +45,7 @@ Stores U-Boot environment variables in a binary format generated from the `.uenv
 
 #### Config Partition (224 KB, fixed)
 A JFFS2 filesystem containing:
-- System configuration files from `user/overlay/`
+- System configuration files from `user/common/overlay/` and any camera- or device-scoped user overlays
 - Persistent settings that survive firmware updates
 - Network configuration, credentials, etc.
 
@@ -108,7 +108,7 @@ The build process:
 2. **Partition Creation**:
    - `u-boot-lzo-with-spl.bin` - bootloader binary
    - `u-boot-env.bin` - environment binary from uenv.txt
-   - `config.jffs2` - config partition from user/overlay/
+   - `config.jffs2` - config partition from `user/common/overlay/` and layered user overlays
    - `uImage` - kernel binary
    - `rootfs.squashfs` - compressed root filesystem
    - `extras.jffs2` - optional extras partition (only if has content)
@@ -132,14 +132,8 @@ make CAMERA=your_camera cleanbuild
 ### Over-the-Air Update (OTA)
 
 ```bash
-# Flash bootloader only (rarely needed)
-make CAMERA=your_camera upboot_ota IP=192.168.1.10
-
-# Flash kernel and rootfs (normal updates)
-make CAMERA=your_camera update_ota IP=192.168.1.10
-
-# Flash complete firmware including bootloader
-make CAMERA=your_camera upgrade_ota IP=192.168.1.10
+# Flash complete firmware image
+make CAMERA=your_camera ota IP=192.168.1.10
 ```
 
 ### Using a Programmer

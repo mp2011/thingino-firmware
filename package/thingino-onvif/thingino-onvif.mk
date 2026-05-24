@@ -1,7 +1,7 @@
 THINGINO_ONVIF_SITE_METHOD = git
 THINGINO_ONVIF_SITE = https://github.com/themactep/thingino-onvif
 THINGINO_ONVIF_SITE_BRANCH = master
-THINGINO_ONVIF_VERSION = 8fc2bd78b14373896e000dedd5ff3b2ea0d35438
+THINGINO_ONVIF_VERSION = 66602f31f747023f1a89a376beff9a123077da43
 
 THINGINO_ONVIF_LICENSE = MIT
 THINGINO_ONVIF_LICENSE_FILES = LICENSE
@@ -91,9 +91,7 @@ define THINGINO_ONVIF_INSTALL_TARGET_CMDS
 	$(INSTALL) -D -m 0644 $(@D)/res/onvif.json \
 		$(TARGET_DIR)/etc/onvif.json
 
-	$(INSTALL) -D -m 0755 $(THINGINO_ONVIF_PKGDIR)/files/S96onvif_discovery \
-		$(TARGET_DIR)/etc/init.d/S96onvif_discovery
-
+	# S96onvif_discovery is streamer-specific and installed by the selected streamer package.
 	$(INSTALL) -D -m 0755 $(THINGINO_ONVIF_PKGDIR)/files/S97onvif_notify \
 		$(TARGET_DIR)/etc/init.d/S97onvif_notify
 endef

@@ -52,7 +52,7 @@ verify_password() {
 
   # Generate hash with mkpasswd
   # Note: mkpasswd defaults to sha512, or use -m sha512 (no dash)
-  local test_hash=$(mkpasswd "$password" -S "$salt" 2>/dev/null)
+  local test_hash=$(mkpasswd "$password" "$salt" 2>/dev/null)
 
   # Compare hashes
   [ "$test_hash" = "$stored_hash" ] && return 0
@@ -67,7 +67,13 @@ case "$REQUEST_METHOD" in
     # Extract username and password from JSON
     # Simple parsing - in production, use jq or proper JSON parser
     username=$(echo "$post_data" | grep -o '"username":"[^"]*"' | cut -d'"' -f4)
-    password=$(echo "$post_data" | grep -o '"password":"[^"]*"' | cut -d'"' -f4)
+    password_raw=$(echo "$post_data" | grep -o '"password":"[^"]*"' | cut -d'"' -f4)
+    encoding=$(echo "$post_data" | grep -o '"encoding":"[^"]*"' | cut -d'"' -f4)
+    if [ "$encoding" = "base64" ]; then
+      password=$(printf '%s' "$password_raw" | base64 -d)
+    else
+      password="$password_raw"
+    fi
 
     # Validate inputs
     [ -z "$username" ] && json_error 400 "Username required"

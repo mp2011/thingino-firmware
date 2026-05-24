@@ -5,6 +5,12 @@ THINGINO_WEBUI_LICENSE = MIT
 THINGINO_WEBUI_ASSET_TAG_RAW := $(shell LC_ALL=C find $(THINGINO_WEBUI_PKGDIR)/files/www/a -type f \( -name '*.js' -o -name '*.css' \) -printf '%T@\n' 2>/dev/null | sort -nr | head -n1 | cut -d. -f1)
 THINGINO_WEBUI_ASSET_TAG := $(if $(THINGINO_WEBUI_ASSET_TAG_RAW),$(THINGINO_WEBUI_ASSET_TAG_RAW),$(shell date +%s))
 
+ifeq ($(BR2_PACKAGE_THINGINO_STREAMER_RAPTOR),y)
+THINGINO_WEBUI_PREVIEW_HTML = $(THINGINO_WEBUI_PKGDIR)/files/www/preview-raptor.html
+else
+THINGINO_WEBUI_PREVIEW_HTML = $(THINGINO_WEBUI_PKGDIR)/files/www/preview.html
+endif
+
 define THINGINO_WEBUI_APPLY_ASSET_TAG
 	@asset_tag="$(THINGINO_WEBUI_ASSET_TAG)"; \
 	root="$(TARGET_DIR)/var/www"; \
@@ -53,13 +59,17 @@ define THINGINO_WEBUI_INSTALL_TARGET_CMDS
 		$(TARGET_DIR)/etc/init.d/S91mqttsub
 	$(INSTALL) -D -m 0755 $(THINGINO_WEBUI_PKGDIR)/files/S95recordmgr \
 		$(TARGET_DIR)/etc/init.d/S95recordmgr
-	$(INSTALL) -D -m 0755 $(THINGINO_WEBUI_PKGDIR)/files/S99heartbeat \
-		$(TARGET_DIR)/etc/init.d/S99heartbeat
+#	$(INSTALL) -D -m 0755 $(THINGINO_WEBUI_PKGDIR)/files/S99heartbeat \
+#		$(TARGET_DIR)/etc/init.d/S99heartbeat
 
 	$(INSTALL) -D -m 0755 $(THINGINO_WEBUI_PKGDIR)/files/recordmgr \
 		$(TARGET_DIR)/usr/sbin/recordmgr
 	$(INSTALL) -D -m 0755 $(THINGINO_WEBUI_PKGDIR)/files/mqtt-sub-dispatcher \
 		$(TARGET_DIR)/usr/sbin/mqtt-sub-dispatcher
+	$(INSTALL) -D -m 0755 $(THINGINO_WEBUI_PKGDIR)/files/telegram-cam-register \
+		$(TARGET_DIR)/usr/sbin/telegram-cam-register
+	$(INSTALL) -D -m 0755 $(THINGINO_WEBUI_PKGDIR)/files/telegram-cam-agent \
+		$(TARGET_DIR)/usr/sbin/telegram-cam-agent
 
 	# HTML pages
 	$(INSTALL) -D -m 0644 $(THINGINO_WEBUI_PKGDIR)/files/www/401.html \
@@ -95,7 +105,7 @@ define THINGINO_WEBUI_INSTALL_TARGET_CMDS
 	$(INSTALL) -D -m 0644 $(THINGINO_WEBUI_PKGDIR)/files/www/config-zerotier.html \
 		$(TARGET_DIR)/var/www/config-zerotier.html
 	$(INSTALL) -D -m 0644 $(THINGINO_WEBUI_PKGDIR)/files/www/firmware-reset.html \
-		$(TARGET_DIR)/var/www/config-reset.html
+		$(TARGET_DIR)/var/www/firmware-reset.html
 	$(INSTALL) -D -m 0644 $(THINGINO_WEBUI_PKGDIR)/files/www/gphotos-auth-callback.html \
 		$(TARGET_DIR)/var/www/gphotos-auth-callback.html
 	$(INSTALL) -D -m 0755 $(THINGINO_WEBUI_PKGDIR)/files/www/index.cgi \
@@ -112,7 +122,7 @@ define THINGINO_WEBUI_INSTALL_TARGET_CMDS
 		$(TARGET_DIR)/var/www/info-usage.html
 	$(INSTALL) -D -m 0644 $(THINGINO_WEBUI_PKGDIR)/files/www/login.html \
 		$(TARGET_DIR)/var/www/login.html
-	$(INSTALL) -D -m 0644 $(THINGINO_WEBUI_PKGDIR)/files/www/preview.html \
+	$(INSTALL) -D -m 0644 $(THINGINO_WEBUI_PREVIEW_HTML) \
 		$(TARGET_DIR)/var/www/preview.html
 	$(INSTALL) -D -m 0644 $(THINGINO_WEBUI_PKGDIR)/files/www/reset.html \
 		$(TARGET_DIR)/var/www/reset.html
@@ -144,6 +154,8 @@ define THINGINO_WEBUI_INSTALL_TARGET_CMDS
 		$(TARGET_DIR)/var/www/tool-send2-ftp.html
 	$(INSTALL) -D -m 0644 $(THINGINO_WEBUI_PKGDIR)/files/www/tool-send2-gphotos.html \
 		$(TARGET_DIR)/var/www/tool-send2-gphotos.html
+	$(INSTALL) -D -m 0644 $(THINGINO_WEBUI_PKGDIR)/files/www/tool-send2-gotify.html \
+		$(TARGET_DIR)/var/www/tool-send2-gotify.html
 	$(INSTALL) -D -m 0644 $(THINGINO_WEBUI_PKGDIR)/files/www/tool-send2-mqtt.html \
 		$(TARGET_DIR)/var/www/tool-send2-mqtt.html
 	$(INSTALL) -D -m 0644 $(THINGINO_WEBUI_PKGDIR)/files/www/tool-mqtt-sub.html \
@@ -160,8 +172,12 @@ define THINGINO_WEBUI_INSTALL_TARGET_CMDS
 		$(TARGET_DIR)/var/www/tool-sensor-data.html
 	$(INSTALL) -D -m 0644 $(THINGINO_WEBUI_PKGDIR)/files/www/tool-timelapse.html \
 		$(TARGET_DIR)/var/www/tool-timelapse.html
-	$(INSTALL) -D -m 0644 $(THINGINO_WEBUI_PKGDIR)/files/www/tool-upgrade.html \
-		$(TARGET_DIR)/var/www/tool-upgrade.html
+	if [ "$(BR2_THINGINO_DEV_PACKAGES)" = "y" ]; then \
+		$(INSTALL) -D -m 0644 $(THINGINO_WEBUI_PKGDIR)/files/www/tool-upgrade.html \
+			$(TARGET_DIR)/var/www/tool-upgrade.html; \
+	else \
+		rm -f $(TARGET_DIR)/var/www/tool-upgrade.html; \
+	fi
 	$(INSTALL) -D -m 0644 $(THINGINO_WEBUI_PKGDIR)/files/www/wait.html \
 		$(TARGET_DIR)/var/www/wait.html
 
@@ -242,6 +258,8 @@ define THINGINO_WEBUI_INSTALL_TARGET_CMDS
 		$(TARGET_DIR)/var/www/a/tool-send2-ftp.js
 	$(INSTALL) -D -m 0644 $(THINGINO_WEBUI_PKGDIR)/files/www/a/tool-send2-gphotos.js \
 		$(TARGET_DIR)/var/www/a/tool-send2-gphotos.js
+	$(INSTALL) -D -m 0644 $(THINGINO_WEBUI_PKGDIR)/files/www/a/tool-send2-gotify.js \
+		$(TARGET_DIR)/var/www/a/tool-send2-gotify.js
 	$(INSTALL) -D -m 0644 $(THINGINO_WEBUI_PKGDIR)/files/www/a/tool-send2-mqtt.js \
 		$(TARGET_DIR)/var/www/a/tool-send2-mqtt.js
 	$(INSTALL) -D -m 0644 $(THINGINO_WEBUI_PKGDIR)/files/www/a/tool-mqtt-sub.js \
@@ -258,8 +276,12 @@ define THINGINO_WEBUI_INSTALL_TARGET_CMDS
 		$(TARGET_DIR)/var/www/a/tool-sensor-data.js
 	$(INSTALL) -D -m 0644 $(THINGINO_WEBUI_PKGDIR)/files/www/a/tool-timelapse.js \
 		$(TARGET_DIR)/var/www/a/tool-timelapse.js
-	$(INSTALL) -D -m 0644 $(THINGINO_WEBUI_PKGDIR)/files/www/a/tool-upgrade.js \
-		$(TARGET_DIR)/var/www/a/tool-upgrade.js
+	if [ "$(BR2_THINGINO_DEV_PACKAGES)" = "y" ]; then \
+		$(INSTALL) -D -m 0644 $(THINGINO_WEBUI_PKGDIR)/files/www/a/tool-upgrade.js \
+			$(TARGET_DIR)/var/www/a/tool-upgrade.js; \
+	else \
+		rm -f $(TARGET_DIR)/var/www/a/tool-upgrade.js; \
+	fi
 	$(INSTALL) -D -m 0644 $(THINGINO_WEBUI_PKGDIR)/files/www/a/wait.js \
 		$(TARGET_DIR)/var/www/a/wait.js
 
@@ -285,6 +307,8 @@ define THINGINO_WEBUI_INSTALL_TARGET_CMDS
 	# CGI Scripts
 	$(INSTALL) -D -m 0755 $(THINGINO_WEBUI_PKGDIR)/files/www/x/api-key.cgi \
 		$(TARGET_DIR)/var/www/x/api-key.cgi
+	$(INSTALL) -D -m 0755 $(THINGINO_WEBUI_PKGDIR)/files/www/x/agent.cgi \
+		$(TARGET_DIR)/var/www/x/agent.cgi
 	$(INSTALL) -D -m 0755 $(THINGINO_WEBUI_PKGDIR)/files/www/x/auth.sh \
 		$(TARGET_DIR)/var/www/x/auth.sh
 	$(INSTALL) -D -m 0755 $(THINGINO_WEBUI_PKGDIR)/files/www/x/ch0.jpg \
@@ -337,12 +361,16 @@ define THINGINO_WEBUI_INSTALL_TARGET_CMDS
 		$(TARGET_DIR)/var/www/x/json-config-wireguard.cgi
 	$(INSTALL) -D -m 0755 $(THINGINO_WEBUI_PKGDIR)/files/www/x/json-config-zerotier.cgi \
 		$(TARGET_DIR)/var/www/x/json-config-zerotier.cgi
+	$(INSTALL) -D -m 0755 $(THINGINO_WEBUI_PKGDIR)/files/www/x/json-agent-token.cgi \
+		$(TARGET_DIR)/var/www/x/json-agent-token.cgi
 	$(INSTALL) -D -m 0755 $(THINGINO_WEBUI_PKGDIR)/files/www/x/json-gphotos-token.cgi \
 		$(TARGET_DIR)/var/www/x/json-gphotos-token.cgi
 	$(INSTALL) -D -m 0755 $(THINGINO_WEBUI_PKGDIR)/files/www/x/json-gpio.cgi \
 		$(TARGET_DIR)/var/www/x/json-gpio.cgi
 	$(INSTALL) -D -m 0755 $(THINGINO_WEBUI_PKGDIR)/files/www/x/json-heartbeat.cgi \
 		$(TARGET_DIR)/var/www/x/json-heartbeat.cgi
+	$(INSTALL) -D -m 0755 $(THINGINO_WEBUI_PKGDIR)/files/www/x/json-heartbeat-slow.cgi \
+		$(TARGET_DIR)/var/www/x/json-heartbeat-slow.cgi
 	$(INSTALL) -D -m 0755 $(THINGINO_WEBUI_PKGDIR)/files/www/x/json-imaging.cgi \
 		$(TARGET_DIR)/var/www/x/json-imaging.cgi
 	$(INSTALL) -D -m 0755 $(THINGINO_WEBUI_PKGDIR)/files/www/x/json-imp.cgi \
@@ -379,6 +407,8 @@ define THINGINO_WEBUI_INSTALL_TARGET_CMDS
 		$(TARGET_DIR)/var/www/x/json-timegraph-stream.cgi
 	$(INSTALL) -D -m 0755 $(THINGINO_WEBUI_PKGDIR)/files/www/x/json-wireguard.cgi \
 		$(TARGET_DIR)/var/www/x/json-wireguard.cgi
+	$(INSTALL) -D -m 0755 $(THINGINO_WEBUI_PKGDIR)/files/www/x/legacy-url-recovery.cgi \
+		$(TARGET_DIR)/var/www/x/legacy-url-recovery.cgi
 	$(INSTALL) -D -m 0755 $(THINGINO_WEBUI_PKGDIR)/files/www/x/login.cgi \
 		$(TARGET_DIR)/var/www/x/login.cgi
 	$(INSTALL) -D -m 0755 $(THINGINO_WEBUI_PKGDIR)/files/www/x/logout.cgi \
@@ -413,8 +443,12 @@ define THINGINO_WEBUI_INSTALL_TARGET_CMDS
 		$(TARGET_DIR)/var/www/x/tool-record.cgi
 	$(INSTALL) -D -m 0755 $(THINGINO_WEBUI_PKGDIR)/files/www/x/tool-sdcard.cgi \
 		$(TARGET_DIR)/var/www/x/tool-sdcard.cgi
-	$(INSTALL) -D -m 0755 $(THINGINO_WEBUI_PKGDIR)/files/www/x/tool-upgrade.cgi \
-		$(TARGET_DIR)/var/www/x/tool-upgrade.cgi
+	if [ "$(BR2_THINGINO_DEV_PACKAGES)" = "y" ]; then \
+		$(INSTALL) -D -m 0755 $(THINGINO_WEBUI_PKGDIR)/files/www/x/tool-upgrade.cgi \
+			$(TARGET_DIR)/var/www/x/tool-upgrade.cgi; \
+	else \
+		rm -f $(TARGET_DIR)/var/www/x/tool-upgrade.cgi; \
+	fi
 	$(INSTALL) -D -m 0755 $(THINGINO_WEBUI_PKGDIR)/files/www/x/wifi-scan.cgi \
 		$(TARGET_DIR)/var/www/x/wifi-scan.cgi
 	$(INSTALL) -D -m 0755 $(THINGINO_WEBUI_PKGDIR)/files/www/x/video.mjpg $(TARGET_DIR)/var/www/x/video.mjpg

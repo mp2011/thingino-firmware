@@ -1,9 +1,9 @@
-THINGINO_UHTTPD_VERSION = 506e24987b97fbc866005bfb71316bd63601a1ef
+THINGINO_UHTTPD_VERSION = e619cb04cddba8316d6928ff99f55a49e6ddc561
 THINGINO_UHTTPD_SITE = https://git.openwrt.org/project/uhttpd.git
 THINGINO_UHTTPD_SITE_METHOD = git
 THINGINO_UHTTPD_LICENSE = ISC
 THINGINO_UHTTPD_LICENSE_FILES = uhttpd.h
-THINGINO_UHTTPD_DEPENDENCIES = libubox json-c
+THINGINO_UHTTPD_DEPENDENCIES = thingino-libubox thingino-jct
 THINGINO_UHTTPD_CONF_OPTS += -DCMAKE_BUILD_TYPE=Debug
 
 ifeq ($(BR2_PACKAGE_LIBXCRYPT),y)
@@ -16,17 +16,17 @@ THINGINO_UHTTPD_CONF_OPTS += -DTLS_SUPPORT=ON
 
 # mbedTLS backend
 ifeq ($(BR2_PACKAGE_THINGINO_UHTTPD_TLS_MBEDTLS),y)
-THINGINO_UHTTPD_DEPENDENCIES += ustream-ssl mbedtls
+THINGINO_UHTTPD_DEPENDENCIES += thingino-ustream-ssl mbedtls
 endif
 
 # mbedTLS backend
 ifeq ($(BR2_PACKAGE_THINGINO_UHTTPD_TLS_OPENSSL),y)
-THINGINO_UHTTPD_DEPENDENCIES += ustream-ssl openssl
+THINGINO_UHTTPD_DEPENDENCIES += thingino-ustream-ssl openssl
 endif
 
 # wolfSSL backend
 ifeq ($(BR2_PACKAGE_THINGINO_UHTTPD_TLS_WOLFSSL),y)
-THINGINO_UHTTPD_DEPENDENCIES += ustream-ssl thingino-wolfssl
+THINGINO_UHTTPD_DEPENDENCIES += thingino-ustream-ssl thingino-wolfssl
 endif
 
 # Ensure at least one SSL backend is selected when TLS is enabled
@@ -42,7 +42,7 @@ endif
 
 # ubus support
 ifeq ($(BR2_PACKAGE_THINGINO_UHTTPD_UBUS),y)
-THINGINO_UHTTPD_DEPENDENCIES += ubus
+THINGINO_UHTTPD_DEPENDENCIES += thingino-ubus
 THINGINO_UHTTPD_CONF_OPTS += -DUBUS_SUPPORT=ON
 else
 THINGINO_UHTTPD_CONF_OPTS += -DUBUS_SUPPORT=OFF
@@ -69,6 +69,9 @@ define THINGINO_UHTTPD_INSTALL_CONFIG
 	mkdir -p $(TARGET_DIR)/etc/ssl/certs $(TARGET_DIR)/etc/ssl/private
 	# Note: Complete web interface provided by thingino-webui package
 
+        # Install SSL certificate generation script (runs early at boot)
+        $(INSTALL) -D -m 0755 $(THINGINO_UHTTPD_PKGDIR)/files/S02ssl \
+                $(TARGET_DIR)/etc/init.d/S02ssl
         # Install startup script for uhttpd
         $(INSTALL) -D -m 0755 $(THINGINO_UHTTPD_PKGDIR)/files/S60uhttpd \
                 $(TARGET_DIR)/etc/init.d/S60uhttpd
@@ -76,14 +79,7 @@ define THINGINO_UHTTPD_INSTALL_CONFIG
                 $(TARGET_DIR)/etc/default/uhttpd
 endef
 
-# Install certificate generation script (disabled - file missing)
-# define THINGINO_UHTTPD_INSTALL_CERT_SCRIPT
-#	$(INSTALL) -D -m 0755 $(THINGINO_UHTTPD_PKGDIR)/files/generate-ssl-cert \
-#		$(TARGET_DIR)/usr/bin/generate-ssl-cert
-# endef
-
 THINGINO_UHTTPD_POST_INSTALL_TARGET_HOOKS += THINGINO_UHTTPD_INSTALL_CONFIG
-# THINGINO_UHTTPD_POST_INSTALL_TARGET_HOOKS += THINGINO_UHTTPD_INSTALL_CERT_SCRIPT
 
 # Note: uhttpd loads ustream-ssl dynamically via dlopen, no static linking needed
 

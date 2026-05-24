@@ -1,7 +1,5 @@
 #!/bin/env sh
 
-. /usr/share/common
-
 if [ -t 0 ]; then
 	if [ -z "$1" ]; then
 		echo "Usage: $0 <command>" >&2
@@ -16,11 +14,11 @@ else
 fi
 
 if [ ! -s "$file" ]; then
-	echo_error "File $file is empty"
+	echo -c 160 -e "File $file is empty" >&2
 	exit 1
 fi
 
-curl -s -T - telnet://tb.thingino.com:9999 < "$file"
+nc -w5 tb.thingino.com 9999 < "$file"
 rm -f "$file"
 
 exit 0

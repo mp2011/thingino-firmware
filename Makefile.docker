@@ -22,7 +22,7 @@ CONTAINER_RUN_OPTS := \
 	-v $(WORKSPACE_DIR):/home/$(USERNAME) \
 	-v thingino-output:/workspace/output \
 	-v $(shell [ -e ${DL_DIR} ] || mkdir -p ${DL_DIR} && readlink -f ${DL_DIR}):/home/$(USERNAME)/dl \
-	-w /home/$(USERNAME) \
+	-w /workspace \
 	-e TERM=xterm-256color
 
 # Interactive container
@@ -60,7 +60,7 @@ docker-make: docker-build
 	@echo 'cleanup() {' >> /tmp/docker-make-run.sh
 	@echo '    echo' >> /tmp/docker-make-run.sh
 	@echo '    echo "Interrupted! Stopping container..."' >> /tmp/docker-make-run.sh
-	@echo '    podman stop -t 2 $$(podman ps -q --filter ancestor=$(DOCKER_IMAGE):$(DOCKER_TAG)) 2>/dev/null || true' >> /tmp/docker-make-run.sh
+	@echo '    $(CONTAINER_ENGINE) stop -t 2 $$($(CONTAINER_ENGINE) ps -q --filter ancestor=$(DOCKER_IMAGE):$(DOCKER_TAG)) 2>/dev/null || true' >> /tmp/docker-make-run.sh
 	@echo '    exit 130' >> /tmp/docker-make-run.sh
 	@echo '}' >> /tmp/docker-make-run.sh
 	@echo 'trap cleanup INT TERM' >> /tmp/docker-make-run.sh
@@ -113,12 +113,12 @@ docker-clean-build: docker-build
 	$(CONTAINER_RUN_EXEC) $(DOCKER_IMAGE):$(DOCKER_TAG) make distclean
 	$(CONTAINER_RUN_EXEC) $(DOCKER_IMAGE):$(DOCKER_TAG) make
 
-.PHONY: docker-upgrade-ota
-docker-upgrade-ota: docker-build
+.PHONY: docker-ota
+docker-ota: docker-build
 	$(eval IP_ARG := $(if $(IP),IP=$(IP)))
 	$(eval CAMERA_ARG := $(if $(CAMERA),CAMERA=$(CAMERA)))
 	$(eval GROUP_ARG := $(if $(GROUP),GROUP=$(GROUP)))
-	$(CONTAINER_RUN_INTERACTIVE) $(DOCKER_IMAGE):$(DOCKER_TAG) make upgrade_ota $(IP_ARG) $(CAMERA_ARG) $(GROUP_ARG)
+	$(CONTAINER_RUN_INTERACTIVE) $(DOCKER_IMAGE):$(DOCKER_TAG) make ota $(IP_ARG) $(CAMERA_ARG) $(GROUP_ARG)
 
 # Allow make targets to be passed through to container
 %:

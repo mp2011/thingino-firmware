@@ -15,11 +15,16 @@ on:
         description: 'Use TG scratch channel'
         required: false
         default: false
-      latest_only:
-        type: boolean
-        description: 'Only build latest default toolchain'
+      gcc_version:
+        type: choice
+        description: 'GCC toolchain version to build'
         required: false
-        default: false
+        default: gcc15
+        options:
+          - gcc15
+          - gcc14
+          - gcc13
+          - all
       debug_enabled:
         type: boolean
         description: 'Debug: Generate dummy image files'
@@ -59,7 +64,7 @@ jobs:
           echo "tg_disabled=${{ github.event.inputs.tg_disabled || 'false' }}" >> $GITHUB_OUTPUT
 
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: "master"
           fetch-depth: "1"
@@ -86,7 +91,7 @@ jobs:
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: "master"
           fetch-depth: "1"
@@ -94,11 +99,14 @@ jobs:
       - name: Generate toolchain matrix
         id: set-matrix
         run: |
-          if [[ "${{ github.event.inputs.latest_only }}" == 'true' ]]; then
-            CONFIGS=$(find configs/github -type f -name "*defconfig" | sort | sed 's|.*/\(.*\)_defconfig|\1|' | grep gcc14)
+          if [[ "${{ github.event_name }}" == 'schedule' ]]; then
+            GCC_FILTER=gcc15
+          elif [[ "${{ github.event.inputs.gcc_version || 'gcc15' }}" == 'all' ]]; then
+            GCC_FILTER=toolchain
           else
-            CONFIGS=$(find configs/github -type f -name "*defconfig" | sort | sed 's|.*/\(.*\)_defconfig|\1|' | grep toolchain)
+            GCC_FILTER="${{ github.event.inputs.gcc_version || 'gcc15' }}"
           fi
+          CONFIGS=$(find configs/github -type f -name "*defconfig" | sort | sed 's|.*/\(.*\)_defconfig|\1|' | grep "$GCC_FILTER")
           JSON_MATRIX="{\"toolchain-version\": ["
           for CONFIG in $CONFIGS; do
             JSON_MATRIX+="\"${CONFIG}\","
@@ -137,7 +145,7 @@ jobs:
 
       - name: Install build dependencies
         run: |
-          apt-get install -y --no-install-recommends --no-install-suggests build-essential bc ccache cmake cpio curl ca-certificates file git gh locales lzop make gawk jq p7zip-full procps rsync u-boot-tools unzip wget
+          apt-get install -y --no-install-recommends --no-install-suggests build-essential bc cmake cpio curl ca-certificates file git gh locales lzop make gawk jq p7zip-full procps rsync u-boot-tools unzip wget
 
       - name: Set timezone
         run: |
@@ -159,7 +167,7 @@ jobs:
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
       - name: Checkout repository source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           submodules: 'true'
           ref: "master"
@@ -180,7 +188,6 @@ jobs:
 
       - name: Setup cache directories
         run: |
-          mkdir -p ~/.ccache
           mkdir -p ~/dl
 
       - name: Fetch buildroot-dl-cache release
@@ -269,6 +276,24 @@ jobs:
           find ~/dl -type f | wc -l
           echo "DL cache restored successfully"
 
+      - name: Apply buildroot override patches
+        run: |
+          PATCH_DIR="package/all-patches/buildroot"
+          if [ -d "$PATCH_DIR" ]; then
+            for patch in $(find "$PATCH_DIR" -maxdepth 1 -type f -name '*.patch' | LC_ALL=C sort); do
+              abspatch="$(pwd)/$patch"
+              if git -C buildroot apply --check "$abspatch" 2>/dev/null; then
+                echo "Applying $patch"
+                git -C buildroot apply "$abspatch"
+              elif git -C buildroot apply -R --check "$abspatch" 2>/dev/null; then
+                echo "Already applied: $patch"
+              else
+                echo "ERROR: failed to apply $patch"
+                exit 1
+              fi
+            done
+          fi
+
       - name: Prepare buildroot cache
         if: ${{ github.event.inputs.debug_enabled != 'true' }}
         run: |
@@ -285,13 +310,13 @@ jobs:
         if: ${{ github.event.inputs.debug_enabled == 'true' }}
         run: |
           DYNAMIC_PART="${{ matrix.toolchain-version }}"
-          mkdir -p ${HOME}/output/${GIT_BRANCH}/${DYNAMIC_PART}/images/
-          echo "debug" > ${HOME}/output/${GIT_BRANCH}/${DYNAMIC_PART}/images/mipsel-thingino-linux-dummy_sdk-buildroot.tar.gz
+          mkdir -p ${GITHUB_WORKSPACE}/output/${GIT_BRANCH}/${DYNAMIC_PART}/images/
+          echo "debug" > ${GITHUB_WORKSPACE}/output/${GIT_BRANCH}/${DYNAMIC_PART}/images/mipsel-thingino-linux-dummy_sdk-buildroot.tar.gz
           echo "TIME=7:77" >> ${GITHUB_ENV}
 
       - name: Rename toolchain package for release
         run: |
-          INGTC=$(find ${HOME}/output/${GIT_BRANCH}/${{ matrix.toolchain-version }}*/images/ -name "mipsel-thingino-linux-*_sdk-buildroot.tar.gz" | head -n 1)
+          INGTC=$(find ${GITHUB_WORKSPACE}/output/${GIT_BRANCH}/${{ matrix.toolchain-version }}*/images/ -name "mipsel-thingino-linux-*_sdk-buildroot.tar.gz" | head -n 1)
           if [[ -n "$INGTC" ]]; then
             DIR_PATH=$(dirname "$INGTC")
             TOOLCHAIN_VERSION="${{ matrix.toolchain-version }}"
@@ -305,18 +330,14 @@ jobs:
           fi
 
       - name: Upload toolchain artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.0
         with:
           name: thingino-${{ matrix.toolchain-version }}-linux-mipsel.tar.gz
           path: ${{ env.INGTC }}
 
       - name: Upload toolchain to release
         if: github.event_name != 'pull_request'
-        uses: softprops/action-gh-release@v2.1.0
-        with:
-          make_latest: false
-          tag_name: ${{ env.TAG_NAME }}
-          files: ${{ env.INGTC }}
+        run: gh release upload "$TAG_NAME" "$INGTC" --clobber
 
 
       - name: Send firmware completion notifications
@@ -355,7 +376,7 @@ jobs:
           echo "TAG_NAME=${{ needs.build-toolchain.outputs.tag_name }}" >> $GITHUB_ENV
 
       - name: Checkout repository source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           submodules: 'false'
           ref: "master"

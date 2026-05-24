@@ -2,8 +2,8 @@
 # subzeroclaw
 ################################################################################
 
-SUBZEROCLAW_VERSION = 98849089aeb0e04ed47bcad0c04606d33846f2e0
-SUBZEROCLAW_SITE = https://github.com/themactep/subzeroclaw
+SUBZEROCLAW_VERSION = 1d203dd4a896b02d521b300431c9127f2917d10a
+SUBZEROCLAW_SITE = https://github.com/jmlago/subzeroclaw
 SUBZEROCLAW_SITE_METHOD = git
 
 SUBZEROCLAW_LICENSE = MIT
@@ -27,9 +27,14 @@ endef
 
 define SUBZEROCLAW_INSTALL_TARGET_CMDS
 	$(INSTALL) -d -m 0755 $(TARGET_DIR)/etc/subzeroclaw/skills
-	$(INSTALL) -D -m 0755 $(@D)/subzeroclaw $(TARGET_DIR)/usr/bin/subzeroclaw
-	$(INSTALL) -D -m 0644 $(SUBZEROCLAW_PKGDIR)/files/config $(TARGET_DIR)/etc/subzeroclaw/config
-	$(INSTALL) -D -m 0644 $(SUBZEROCLAW_PKGDIR)/files/system.md $(TARGET_DIR)/etc/subzeroclaw/skills/system.md
+	$(INSTALL) -D -m 0755 $(@D)/subzeroclaw \
+		$(TARGET_DIR)/usr/bin/subzeroclaw
+	$(INSTALL) -D -m 0755 $(SUBZEROCLAW_PKGDIR)/files/szc \
+		$(TARGET_DIR)/usr/bin/szc
+	$(INSTALL) -D -m 0644 $(SUBZEROCLAW_PKGDIR)/files/config \
+		$(TARGET_DIR)/etc/subzeroclaw/config
+	$(INSTALL) -D -m 0644 $(SUBZEROCLAW_PKGDIR)/files/system.md \
+		$(TARGET_DIR)/etc/subzeroclaw/skills/system.md
 endef
 
 $(eval $(generic-package))

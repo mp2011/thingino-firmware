@@ -1,6 +1,24 @@
 config BR2_PACKAGE_INGENIC_SDK
 	bool "Ingenic SDK"
-	default y
+	default y if !KERNEL_VERSION_7
+	depends on !KERNEL_VERSION_7
 	select BR2_LINUX_KERNEL
 	help
 	  Code from Ingenic SDK
+
+config BR2_INGENIC_SDK_ISP_TRACE
+	bool "ISP vtable trace"
+	depends on BR2_PACKAGE_INGENIC_SDK
+	help
+	  Enable CONFIG_JZ_ISP_TRACE in the kernel. At module load time the
+	  driver will dump the symbolic name of every jz_driver_common_interfaces
+	  vtable entry to the kernel log. Useful for open-driver development.
+	  Check dmesg | grep jz_isp_trace on the camera.
+
+config BR2_INGENIC_SDK_JZ_AES
+	bool "jz-aes hardware AES module"
+	depends on BR2_PACKAGE_INGENIC_SDK
+	help
+	  Load the jz-aes kernel module at boot. Provides hardware AES-128
+	  acceleration via /dev/aes (ECB/CBC, DMA, IRQ). Useful for TLS
+	  offload (RTSPS, HTTPS) on Ingenic SoCs.

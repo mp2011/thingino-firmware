@@ -1,8 +1,8 @@
 WIFI_SITE_METHOD = local
-WIFI_SITE = $(BR2_EXTERNAL)/package/wifi
+WIFI_SITE = $(BR2_EXTERNAL_THINGINO_PATH)/package/wifi
 
 WIFI_TEMPLATE_PYTHON = $(shell command -v python3)
-WIFI_TEMPLATE_RENDERER = $(BR2_EXTERNAL)/scripts/render_template.py
+WIFI_TEMPLATE_RENDERER = $(BR2_EXTERNAL_THINGINO_PATH)/scripts/render_template.py
 
 ifeq ($(BR2_PACKAGE_WIFI),y)
 WIFI_DRIVER_SELECTED :=
@@ -62,21 +62,27 @@ ifeq ($(WIFI_DRIVER_SELECTED),)
 $(error No Thingino Wi-Fi driver (BR2_PACKAGE_WIFI_*) selected)
 endif
 ifneq ($(words $(WIFI_DRIVER_SELECTED)),1)
+ifeq ($(CAMERA),build_cache)
+$(warning Multiple Thingino Wi-Fi drivers selected for cache-only config: $(WIFI_DRIVER_SELECTED))
+else
 $(error Multiple Thingino Wi-Fi drivers selected: $(WIFI_DRIVER_SELECTED))
+endif
 endif
 
 WLAN_MODULE := $(firstword $(WIFI_DRIVER_SELECTED))
 WIFI_INTERFACE := $(strip $(WIFI_DRIVER_INTERFACE_$(WLAN_MODULE)))
 
 WIFI_IS_HI3881_FLAG := 0
-#ifeq ($(WLAN_MODULE),hi3881)
 ifeq ($(BR2_PACKAGE_WIFI_HI3881),y)
 WIFI_IS_HI3881_FLAG := 1
-WIFI_NETDEV = ap0
+WIFI_STA_NETDEV = ap0
+WIFI_AP_NETDEV = ap0
 else ifeq ($(BR2_PACKAGE_WIFI_WQ9001),y)
-WIFI_NETDEV = wlan1
+WIFI_STA_NETDEV = wlan0
+WIFI_AP_NETDEV = wlan1
 else
-WIFI_NETDEV = wlan0
+WIFI_STA_NETDEV = wlan0
+WIFI_AP_NETDEV = wlan0
 endif
 
 ifeq ($(WIFI_INTERFACE),)
@@ -150,10 +156,19 @@ define WIFI_INSTALL_TARGET_CMDS
 		--output $(TARGET_DIR)/etc/init.d/S36wireless $(WIFI_TEMPLATE_VARS)
 	chmod 0755 $(TARGET_DIR)/etc/init.d/S36wireless
 
-	# WPA supplicant script
-	sed -e 's,@WLAN_NETDEV@,$(WIFI_NETDEV),g' \
+	# WPA supplicant script (runs before network, so DHCP can get a lease)
+	sed -e 's,@WLAN_STA_NETDEV@,$(WIFI_STA_NETDEV),g' \
+		-e 's,@WLAN_AP_NETDEV@,$(WIFI_AP_NETDEV),g' \
+		-e 's,@WLAN_MODULE_NAME@,$(WLAN_MODULE_NAME),g' \
 		$(WIFI_PKGDIR)/files/S38wpa_supplicant.in > $(TARGET_DIR)/etc/init.d/S38wpa_supplicant
 	chmod 0755 $(TARGET_DIR)/etc/init.d/S38wpa_supplicant
+
+	# Wired-gateway preempt shim (runs after network, stops WiFi if wired is up)
+	$(WIFI_TEMPLATE_PYTHON) $(WIFI_TEMPLATE_RENDERER) \
+		--template $(WIFI_PKGDIR)/files/S40wired-gateway \
+		--output $(TARGET_DIR)/etc/init.d/S40wired-gateway \
+		$(WIFI_TEMPLATE_VARS)
+	chmod 0755 $(TARGET_DIR)/etc/init.d/S40wired-gateway
 
 	# Network interface config
 	$(INSTALL) -D -m 0644 $(WIFI_PKGDIR)/files/wlan0 \

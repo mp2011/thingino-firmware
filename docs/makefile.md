@@ -23,14 +23,21 @@ This document provides comprehensive documentation for working with the Thingino
 ### Basic Build Workflow
 
 ```bash
-# 1. Select your camera profile
+# 1. Select your camera profile (or let make prompt for it)
 export CAMERA=t31_gc2053_lite
 
 # 2. Build firmware (default: fast parallel build)
 make
 
 # 3. Flash to camera
-make upgrade_ota IP=192.168.1.10
+make ota IP=192.168.1.10
+```
+
+To force a generic, non-device-specific build from the command line, clear the
+saved IP for the current terminal session:
+
+```bash
+IP= make
 ```
 
 ### Common Commands
@@ -53,6 +60,7 @@ make distclean         # Complete clean (removes OUTPUT_DIR)
 - Required for most build operations
 - Camera profiles are located in `configs/cameras/` or `configs/cameras-*/`
 - Example: `CAMERA=t31_gc2053_lite`
+- If omitted, `make` prompts for a camera and reuses that choice in the current terminal session
 
 **`GROUP`** - Camera configuration group
 - `github` → `configs/github/`
@@ -62,9 +70,15 @@ make distclean         # Complete clean (removes OUTPUT_DIR)
 
 ### Network Configuration
 
-**`IP`** - Camera IP address for OTA updates (default: `192.168.1.10`)
+**`IP`** - Camera IP address for OTA updates and per-device build overlays.
+- If `IP` is not provided on the command line, interactive camera selection prompts for it
+- The last non-empty value is reused in the current terminal session
+- Clear it with `IP=` to return to a generic build/output path
 ```bash
-make upgrade_ota IP=192.168.88.111
+make ota IP=192.168.88.111
+
+# Force a generic build for the current session
+IP= make
 ```
 
 **`TFTP_IP_ADDRESS`** - TFTP server IP (default: `192.168.1.254`)
@@ -79,15 +93,11 @@ make
 
 **`OUTPUT_DIR`** - Build output directory
 - Auto-generated based on `CAMERA` and git branch
-- Default pattern: `~/output-<branch>/<camera>`
+- Default pattern: `output/<branch>/<camera>-<kernel>-<libc>`
+- If a non-empty session `IP` is active, the directory becomes `output/<branch>/<camera>-<kernel>-<libc>-<ip>`
 - Can be overridden manually
 
 ### Advanced Variables
-
-**`RELEASE`** - Build release firmware without local overrides
-```bash
-make release  # Sets RELEASE=1
-```
 
 **`WORKFLOW`** - Skip dependency checks (used in CI/CD)
 
@@ -126,13 +136,6 @@ Complete clean build with parallel compilation. Removes all previous build artif
 make cleanbuild
 ```
 Equivalent to: `distclean defconfig build_fast pack`
-
-#### `release`
-Build release firmware without local configuration overrides.
-```bash
-make release
-```
-Disables `local.fragment` and `local.mk` inclusion.
 
 ### Build Process Targets
 
@@ -215,10 +218,10 @@ Thingino uses a layered configuration system:
 1. **Fragment files** (`configs/fragments/*.fragment`) - Modular config pieces
 2. **Module config** - SoC/sensor specific configuration
 3. **Camera config** - Camera-specific overrides
-4. **Local overrides** (optional, ignored in release builds):
-   - `user/local.fragment` - Local Buildroot config additions
-   - `user/local.config` - Local system config
-   - `user/local.uenv.txt` - Local U-Boot environment
+4. **Local overrides**:
+   - `user/common/local.fragment` - Local Buildroot config additions
+   - `user/common/local.uenv.txt` - Local U-Boot environment
+   - `user/common/thingino.json` - Layered `/etc/thingino.json` additions and overrides
    - `local.mk` - Local Makefile overrides
 
 ### Configuration Targets
@@ -281,9 +284,8 @@ Presents a dialog menu with options:
 3. System Config
 4. Camera U-Boot Environment
 5. Local Fragment
-6. Local Config
-7. Local Makefile
-8. Local U-Boot Environment
+6. Local Makefile
+7. Local U-Boot Environment
 
 #### Direct Edit Targets
 
@@ -292,7 +294,6 @@ make edit-defconfig      # Edit camera's defconfig
 make edit-config         # Edit system config
 make edit-uenv           # Edit U-Boot environment
 make edit-localfragment  # Edit local.fragment
-make edit-localconfig    # Edit local.config
 make edit-localmk        # Edit local.mk
 make edit-localuenv      # Edit local.uenv.txt
 ```
@@ -312,7 +313,7 @@ make rebuild-telegrambot
 make rebuild-prudynt-t
 make rebuild-linux
 ```
-Equivalent to: `<package>-dirclean` + `<package>`
+Equivalent to: `<package>-dirclean` + `<package>` + `<package>-reinstall` + `target-finalize`
 
 ### Buildroot Package Targets (with `br-` prefix)
 
@@ -424,25 +425,13 @@ make toolchain
 
 ### Over-The-Air (OTA) Updates
 
-#### `upgrade_ota`
+#### `ota`
 Flash full firmware image (includes bootloader).
 ```bash
-make upgrade_ota IP=192.168.1.10
+make ota IP=192.168.1.10
 ```
-**Warning**: Flashing bootloader can brick the camera if interrupted.
-
-#### `update_ota`
-Flash kernel and rootfs only (no bootloader).
-```bash
-make update_ota IP=192.168.1.10
-```
-Safer option for regular updates.
-
-#### `upboot_ota`
-Flash bootloader only.
-```bash
-make upboot_ota IP=192.168.1.10
-```
+If a session IP is already active, the same command can be run without repeating
+`IP=...`.
 
 ### TFTP Upload
 
@@ -689,7 +678,7 @@ make <package>-menuconfig   # Configure (if supported)
 make pack
 
 # The output shows a table with sizes and alignment
-# Look for "OVERSIZE" or "FINE" in the figlet output
+# Look for "OVERSIZE" in the output!
 
 # Solutions:
 # - Disable unnecessary packages in menuconfig
@@ -726,19 +715,20 @@ make pack
 
 1. **`board.mk`** - Camera board selection and validation
 2. **`thingino.mk`** - Core Thingino-specific build logic
-3. **`local.mk`** (optional) - Local build customizations
-4. **`external.mk`** - Buildroot external package definitions
+3. **`local.mk`** (optional) - Repository-local Buildroot package overrides
+4. **User-scoped `local.mk` layers** (optional) - `user/common/local.mk`, `user/<camera>/local.mk`, and `user/<camera>/<ip>/local.mk`, aggregated into `OUTPUT_DIR/local.mk`
+5. **`external.mk`** - Buildroot external package definitions
 
 ### Partition Layout
 
 Firmware is assembled from multiple partitions:
 
-| Partition | Offset     | Size    | Contents                |
-|-----------|------------|---------|-------------------------|
-| U-Boot    | 0x000000   | 256 KB  | Bootloader              |
-| UB_ENV    | 0x040000   | 32 KB   | U-Boot environment      |
-| CONFIG    | 0x048000   | 224 KB  | Configuration (JFFS2)   |
-| KERNEL    | 0x080000   | Dynamic | Linux kernel (uImage)   |
+| Partition | Offset     | Size    | Contents                   |
+|-----------|------------|---------|----------------------------|
+| U-Boot    | 0x000000   | 256 KB  | Bootloader                 |
+| UB_ENV    | 0x040000   | 32 KB   | U-Boot environment         |
+| CONFIG    | 0x048000   | 224 KB  | Configuration (JFFS2)      |
+| KERNEL    | 0x080000   | Dynamic | Linux kernel (uImage)      |
 | ROOTFS    | Dynamic    | Dynamic | Root filesystem (SquashFS) |
 | EXTRAS    | Dynamic    | Dynamic | Optional packages (JFFS2)  |
 
@@ -774,7 +764,7 @@ Sizes are 32KB-aligned for JFFS2 compatibility.
    make saveconfig
    ```
 3. **Use fragments** for modular configurations instead of duplicating full configs
-4. **Test with `release`** before committing to ensure local overrides aren't required
+4. Validate with a clean build path before committing
 
 ### Package Development
 
@@ -816,8 +806,7 @@ make rebuild-<package>        # Rebuild package
 make <package>-menuconfig     # Configure package (kernel, busybox, etc.)
 
 # Deploy
-make upgrade_ota IP=x.x.x.x   # Flash full firmware
-make update_ota IP=x.x.x.x    # Flash kernel+rootfs only
+make ota IP=x.x.x.x           # Flash full firmware
 
 # Clean
 make clean                    # Clean build artifacts
@@ -833,7 +822,7 @@ make help                     # Show help
 ```bash
 export CAMERA=t31_gc2053_lite        # Camera profile
 export GROUP=github                  # Camera group
-export IP=192.168.1.10               # Camera IP
+export IP=192.168.1.10               # Camera IP / device-specific build scope
 export BR2_DL_DIR=/path/to/downloads # Download cache
 export OUTPUT_DIR=/custom/path       # Build output
 ```

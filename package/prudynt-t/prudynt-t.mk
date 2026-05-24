@@ -2,13 +2,16 @@ PRUDYNT_T_SITE_METHOD = git
 # PRUDYNT_T_SITE = https://github.com/gtxaspec/prudynt-t
 PRUDYNT_T_SITE = https://github.com/themactep/prudynt-t
 PRUDYNT_T_SITE_BRANCH = stable
-PRUDYNT_T_VERSION = f663f078458e9ab4fba12e86a46fca0ad5610028
+PRUDYNT_T_VERSION = f4b32289359d176fb0795d9f3735af0bd9d6d2fd
 
-PRUDYNT_T_OVERRIDE_FILE = $(BR2_EXTERNAL)/$(CAMERA_SUBDIR)/$(CAMERA)/prudynt-override.json
+PRUDYNT_T_OVERRIDE_FILE = $(BR2_EXTERNAL_THINGINO_PATH)/$(CAMERA_SUBDIR)/$(CAMERA)/prudynt.json
 
 PRUDYNT_T_GIT_SUBMODULES = YES
 
 PRUDYNT_T_DEPENDENCIES += ingenic-lib
+ifeq ($(BR2_PACKAGE_LIBAUDIOPROCESS_NEO),y)
+	PRUDYNT_T_DEPENDENCIES += libaudioprocess-neo
+endif
 PRUDYNT_T_DEPENDENCIES += host-thingino-jct thingino-jct
 PRUDYNT_T_DEPENDENCIES += thingino-live555
 PRUDYNT_T_DEPENDENCIES += thingino-libcurl
@@ -93,7 +96,7 @@ ifeq ($(BR2_TOOLCHAIN_USES_UCLIBC),y)
 endif
 
 PRUDYNT_CFLAGS += -DPLATFORM_$(shell echo $(SOC_FAMILY) | tr a-z A-Z)
-ifeq ($(KERNEL_VERSION_4),y)
+ifeq ($(KERNEL_VERSION),4.4.94)
 	PRUDYNT_CFLAGS += -DKERNEL_VERSION_4
 endif
 
@@ -275,6 +278,18 @@ define PRUDYNT_T_INSTALL_TARGET_CMDS
 		$(HOST_DIR)/bin/jct $(STAGING_DIR)/prudynt.json import "$(PRUDYNT_T_PKGDIR)/files/websockets.json"; \
 	fi
 
+	# Re-apply user prudynt overrides after package defaults (common/camera/device order)
+	for USER_PRUDYNT_CONFIG in $(THINGINO_USER_PRUDYNT_JSON_FILES); do \
+		if [ -s "$$USER_PRUDYNT_CONFIG" ]; then \
+			if [ ! -x "$(HOST_DIR)/bin/jct" ]; then \
+				echo "ERROR: host jct tool missing: $(HOST_DIR)/bin/jct"; \
+				exit 1; \
+			fi; \
+			echo "Applying user Prudynt override from $$USER_PRUDYNT_CONFIG"; \
+			$(HOST_DIR)/bin/jct $(STAGING_DIR)/prudynt.json import "$$USER_PRUDYNT_CONFIG"; \
+		fi; \
+	done
+
 	# Install the final, modified JSON file from staging to target
 	$(INSTALL) -D -m 0644 $(STAGING_DIR)/prudynt.json \
 		$(TARGET_DIR)/etc/prudynt.json
@@ -298,6 +313,8 @@ define PRUDYNT_T_INSTALL_TARGET_CMDS
 	# send2 scripts
 	$(INSTALL) -D -m 0644 $(PRUDYNT_T_PKGDIR)/files/send2.json \
 		$(TARGET_DIR)/etc/send2.json
+	$(INSTALL) -D -m 0644 $(PRUDYNT_T_PKGDIR)/files/prudynt-helpers \
+		$(TARGET_DIR)/usr/share/prudynt-helpers
 	$(INSTALL) -D -m 0644 $(PRUDYNT_T_PKGDIR)/files/send2common \
 		$(TARGET_DIR)/usr/share/send2common
 	$(INSTALL) -D -m 0755 $(PRUDYNT_T_PKGDIR)/files/send2email \
@@ -306,6 +323,8 @@ define PRUDYNT_T_INSTALL_TARGET_CMDS
 		$(TARGET_DIR)/usr/sbin/send2ftp
 	$(INSTALL) -D -m 0755 $(PRUDYNT_T_PKGDIR)/files/send2gphotos \
 		$(TARGET_DIR)/usr/sbin/send2gphotos
+	$(INSTALL) -D -m 0755 $(PRUDYNT_T_PKGDIR)/files/send2gotify \
+		$(TARGET_DIR)/usr/sbin/send2gotify
 	$(INSTALL) -D -m 0755 $(PRUDYNT_T_PKGDIR)/files/send2mqtt \
 		$(TARGET_DIR)/usr/sbin/send2mqtt
 	$(INSTALL) -D -m 0755 $(PRUDYNT_T_PKGDIR)/files/send2ntfy \
@@ -334,6 +353,10 @@ define PRUDYNT_T_INSTALL_TARGET_CMDS
 		$(TARGET_DIR)/etc/init.d/S31prudynt
 #	$(INSTALL) -D -m 0755 $(PRUDYNT_T_PKGDIR)/files/S32prudyntwd \
 #		$(TARGET_DIR)/etc/init.d/S32prudyntwd
+	if [ "$(BR2_PACKAGE_THINGINO_ONVIF)" = "y" ]; then \
+		$(INSTALL) -D -m 0755 $(PRUDYNT_T_PKGDIR)/files/S96onvif_discovery \
+			$(TARGET_DIR)/etc/init.d/S96onvif_discovery; \
+	fi
 	$(INSTALL) -D -m 0755 $(PRUDYNT_T_PKGDIR)/files/S98recorder \
 		$(TARGET_DIR)/etc/init.d/S98recorder
 
@@ -350,6 +373,8 @@ define PRUDYNT_T_INSTALL_TARGET_CMDS
 		echo "Installing debug tools and documentation to NFS..."; \
 		$(INSTALL) -D -m 0755 $(PRUDYNT_T_PKGDIR)/scripts/prudynt-debug-helper.sh \
 			$(BR2_THINGINO_NFS)/$(CAMERA)/usr/bin/prudynt-debug-helper; \
+		$(INSTALL) -D -m 0755 $(PRUDYNT_T_PKGDIR)/scripts/prudynt-crash-watch.sh \
+			$(BR2_THINGINO_NFS)/$(CAMERA)/usr/bin/prudynt-crash-watch; \
 		if [ -f $(@D)/test_memory_safety.sh ]; then \
 			$(INSTALL) -D -m 0755 $(@D)/test_memory_safety.sh \
 				$(BR2_THINGINO_NFS)/$(CAMERA)/usr/bin/prudynt-test-memory; \
@@ -369,13 +394,14 @@ define PRUDYNT_T_INSTALL_TARGET_CMDS
 		echo "  /mnt/nfs/$(CAMERA)/usr/bin/prudynt-debug-helper check   - Check available debug features" >> $(BR2_THINGINO_NFS)/$(CAMERA)/usr/share/prudynt-debug-info.txt; \
 		echo "  /mnt/nfs/$(CAMERA)/usr/bin/prudynt-debug-helper run     - Run with debug options" >> $(BR2_THINGINO_NFS)/$(CAMERA)/usr/share/prudynt-debug-info.txt; \
 		echo "  /mnt/nfs/$(CAMERA)/usr/bin/prudynt-debug-helper gdb     - Debug with GDB" >> $(BR2_THINGINO_NFS)/$(CAMERA)/usr/share/prudynt-debug-info.txt; \
+		echo "  /mnt/nfs/$(CAMERA)/usr/bin/prudynt-crash-watch          - Run unattended crash capture" >> $(BR2_THINGINO_NFS)/$(CAMERA)/usr/share/prudynt-debug-info.txt; \
 		echo "  /mnt/nfs/$(CAMERA)/usr/bin/prudynt-debug                - Run unstripped binary directly" >> $(BR2_THINGINO_NFS)/$(CAMERA)/usr/share/prudynt-debug-info.txt; \
 		echo "  /mnt/nfs/$(CAMERA)/usr/bin/prudynt-test-memory          - Run memory safety tests" >> $(BR2_THINGINO_NFS)/$(CAMERA)/usr/share/prudynt-debug-info.txt; \
 		echo "" >> $(BR2_THINGINO_NFS)/$(CAMERA)/usr/share/prudynt-debug-info.txt; \
 		echo "GDB Usage:" >> $(BR2_THINGINO_NFS)/$(CAMERA)/usr/share/prudynt-debug-info.txt; \
 		echo "  gdb /mnt/nfs/$(CAMERA)/usr/bin/prudynt-debug" >> $(BR2_THINGINO_NFS)/$(CAMERA)/usr/share/prudynt-debug-info.txt; \
 		echo "  gdb /usr/bin/prudynt -s /mnt/nfs/$(CAMERA)/usr/lib/debug/usr/bin/prudynt.debug" >> $(BR2_THINGINO_NFS)/$(CAMERA)/usr/share/prudynt-debug-info.txt; \
-		echo "Debug tools installed to NFS: prudynt-debug-helper, prudynt-test-memory"; \
+		echo "Debug tools installed to NFS: prudynt-debug-helper, prudynt-crash-watch, prudynt-test-memory"; \
 	fi
 endef
 

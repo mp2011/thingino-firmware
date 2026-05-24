@@ -2,10 +2,22 @@
 
 die() { echo -e "\e[38;5;160m$1\e[0m" >&2; exit 1; }
 
-[ "$#" -ne 2 ] && die "Usage: $0 FIRMWARE_FILE IP_ADDRESS"
+FORCE=0
+SKIP_SPACE_CHECK=0
+while getopts "fn" opt; do
+	case "$opt" in
+		f) FORCE=1 ;;
+		n) SKIP_SPACE_CHECK=1 ;;
+		*) die "Usage: $0 [-f] [-n] FIRMWARE_FILE IP_ADDRESS" ;;
+	esac
+done
+shift $((OPTIND - 1))
+
+[ "$#" -ne 2 ] && die "Usage: $0 [-f] [-n] FIRMWARE_FILE IP_ADDRESS"
 
 cleanup() {
-	ssh -O exit $SSH_OPTS $REMOTE_HOST 2>/dev/null;
+	ssh -O exit $SSH_OPTS $REMOTE_HOST 2>/dev/null
+	printf '\033[0m' 2>/dev/null || true
 }
 
 remote_copy() {
@@ -18,6 +30,163 @@ remote_run() {
 	ssh $SSH_OPTS $REMOTE_HOST "$1"
 }
 
+remote_uptime_seconds() {
+	remote_run "awk '{print int(\$1)}' /proc/uptime" 2>/dev/null | tr -d '[:space:]'
+}
+
+select_remote_fw_path() {
+	if remote_run "mountpoint -q /mnt/mmcblk0p1 && [ -w /mnt/mmcblk0p1 ]" >/dev/null 2>&1; then
+		REMOTE_FW_FILE="/mnt/mmcblk0p1/fw.bin"
+		echo "Using SD card staging area at /mnt/mmcblk0p1."
+	else
+		REMOTE_FW_FILE="/tmp/fw.bin"
+	fi
+
+	REMOTE_FW_DIR="${REMOTE_FW_FILE%/*}"
+}
+
+remote_mem_available_kb() {
+	remote_run "awk '\$1==\"MemAvailable:\" { print int(\$2); found=1 } \$1==\"MemFree:\" && !memfree { memfree=int(\$2) } END { if (!found) print memfree }' /proc/meminfo" 2>/dev/null | tr -d '[:space:]'
+}
+
+is_integer() {
+	case "$1" in
+		''|*[!0-9]*)
+			return 1
+			;;
+		*)
+			return 0
+			;;
+	esac
+}
+
+prepare_upload_memory() {
+	echo "Freeing memory before upload..."
+	remote_run "rm -f /tmp/snapshot.jpg; sync; if [ -x /etc/init.d/S31raptor ]; then /etc/init.d/S31raptor stop; elif [ -x /etc/init.d/S31prudynt ]; then /etc/init.d/S31prudynt stop; elif pidof prudynt >/dev/null 2>&1; then killall prudynt 2>/dev/null || true; fi; sleep 1; [ -w /proc/sys/vm/drop_caches ] && echo 3 > /proc/sys/vm/drop_caches || true" >/dev/null || \
+		echo "Warning: failed to free memory before upload."
+}
+
+wait_for_reboot_after_detach() {
+	local previous_uptime current_uptime retries saw_disconnect
+
+	previous_uptime="$1"
+	retries=120
+	saw_disconnect=0
+
+	echo "Waiting for detached flash to reboot the device..."
+	while [ "$retries" -gt 0 ]; do
+		if current_uptime=$(remote_uptime_seconds); then
+			if [ -n "$current_uptime" ] && [ "$current_uptime" -lt "$previous_uptime" ]; then
+				echo "Device rebooted successfully."
+				return 0
+			fi
+
+			if [ "$saw_disconnect" -eq 1 ]; then
+				echo "Device is back online after reboot."
+				return 0
+			fi
+		else
+			saw_disconnect=1
+		fi
+
+		retries=$(( retries - 1 ))
+		sleep 2
+	done
+
+	return 1
+}
+
+check_and_free_space() {
+	local fw_size_kb remote_avail_kb remote_memavail_kb dir_needed_kb mem_needed_kb
+	fw_size_kb=$(( ($(stat -c%s "$LOCAL_FW_FILE") + 1023) / 1024 ))
+	# Uploading into tmpfs also needs extra RAM for dropbear/scp buffers and page cache.
+	mem_needed_kb=$(( fw_size_kb + 8192 ))
+
+	select_remote_fw_path
+	prepare_upload_memory
+
+	if [ "$REMOTE_FW_DIR" = "/tmp" ]; then
+		# Need room for the firmware plus sysupgrade working files in /tmp.
+		dir_needed_kb=$(( fw_size_kb + 4096 ))
+	else
+		# SD card staging does not require tmpfs working-space headroom.
+		dir_needed_kb=$fw_size_kb
+	fi
+
+	remote_avail_kb=$(remote_run "df -k $REMOTE_FW_DIR | awk 'NR==2{print \$4}'" | tr -d '[:space:]')
+	is_integer "$remote_avail_kb" || die "Failed to read available space in ${REMOTE_FW_DIR} on the device."
+	echo "Firmware size: ${fw_size_kb}KB, available ${REMOTE_FW_DIR}: ${remote_avail_kb}KB, needed in ${REMOTE_FW_DIR}: ${dir_needed_kb}KB"
+
+	if [ "$REMOTE_FW_DIR" != "/tmp" ]; then
+		[ "$remote_avail_kb" -ge "$dir_needed_kb" ] && return 0
+		die "Not enough free space in ${REMOTE_FW_DIR} on the device."
+	fi
+
+	remote_memavail_kb=$(remote_mem_available_kb)
+	is_integer "$remote_memavail_kb" || die "Failed to read available RAM on the device."
+	echo "Available RAM: ${remote_memavail_kb}KB, needed for upload: ${mem_needed_kb}KB"
+
+	[ "$remote_avail_kb" -ge "$dir_needed_kb" ] && [ "$remote_memavail_kb" -ge "$mem_needed_kb" ] && return 0
+
+	echo "Not enough upload headroom on the device. Attempting to free memory by remapping rmem..."
+
+	local osmem rmem_val osmem_mb osmem_addr rmem_mb rmem_addr new_osmem_mb
+	osmem=$(remote_run "fw_printenv -n osmem" | tr -d '[:space:]')
+	rmem_val=$(remote_run "fw_printenv -n rmem" | tr -d '[:space:]')
+
+	osmem_mb=$(echo "$osmem" | sed 's/M@.*//')
+	osmem_addr=$(echo "$osmem" | sed 's/.*@//')
+	rmem_mb=$(echo "$rmem_val" | sed 's/M@.*//')
+	rmem_addr=$(echo "$rmem_val" | sed 's/.*@//')
+
+	if [ -z "$rmem_mb" ] || [ "$rmem_mb" -le 0 ]; then
+		die "Not enough upload headroom and rmem is not set or already zero. Cannot proceed."
+	fi
+
+	new_osmem_mb=$(( osmem_mb + rmem_mb ))
+	echo "Remapping memory: osmem ${osmem_mb}M -> ${new_osmem_mb}M, rmem ${rmem_mb}M -> 0M (at ${rmem_addr})"
+
+	remote_run "fw_setenv osmem ${new_osmem_mb}M@${osmem_addr} && fw_setenv rmem 0M@${rmem_addr} && reboot" || true
+
+	echo "Closing SSH mux..."
+	ssh -O exit $SSH_OPTS $REMOTE_HOST 2>/dev/null || true
+
+	echo "Waiting for device to reboot..."
+	sleep 15
+
+	local retries=30
+	while [ "$retries" -gt 0 ]; do
+		if ssh $SSH_OPTS -o ConnectTimeout=5 $REMOTE_HOST "echo ok" >/dev/null 2>&1; then
+			break
+		fi
+		retries=$(( retries - 1 ))
+		sleep 3
+	done
+	[ "$retries" -eq 0 ] && die "Device did not come back online after memory remap reboot."
+
+	echo "Device is back online with remapped memory. Re-initializing SSH mux..."
+	ssh -fN $SSH_OPTS $REMOTE_HOST >/dev/null 2>/dev/null || die "Failed to re-initialize SSH connection after reboot"
+
+	echo "Re-uploading sysupgrade utility (tmpfs was cleared on reboot)..."
+	upload_sysupgrade
+	select_remote_fw_path
+	prepare_upload_memory
+
+	remote_avail_kb=$(remote_run "df -k $REMOTE_FW_DIR | awk 'NR==2{print \$4}'" | tr -d '[:space:]')
+	is_integer "$remote_avail_kb" || die "Failed to read available space in ${REMOTE_FW_DIR} after memory remap."
+	echo "Post-remap available ${REMOTE_FW_DIR}: ${remote_avail_kb}KB"
+
+	if [ "$REMOTE_FW_DIR" = "/tmp" ]; then
+		remote_memavail_kb=$(remote_mem_available_kb)
+		is_integer "$remote_memavail_kb" || die "Failed to read available RAM after memory remap."
+		echo "Post-remap available RAM: ${remote_memavail_kb}KB"
+		[ "$remote_avail_kb" -ge "$dir_needed_kb" ] && [ "$remote_memavail_kb" -ge "$mem_needed_kb" ] && return 0
+		die "Not enough upload headroom after memory remap."
+	fi
+
+	[ "$remote_avail_kb" -ge "$dir_needed_kb" ] || die "Not enough free space in ${REMOTE_FW_DIR} after memory remap."
+}
+
 trap cleanup EXIT
 
 CAMERA_IP_ADDRESS="$2"
@@ -27,6 +196,7 @@ LOCAL_SCRIPT="$(dirname "$0")/../package/thingino-sysupgrade/files/sysupgrade"
 LOCAL_SCRIPT2="$(dirname "$0")/../package/thingino-sysupgrade/files/sysupgrade-stage2"
 
 REMOTE_FW_FILE="/tmp/fw.bin"
+REMOTE_FW_DIR="/tmp"
 REMOTE_HOST="root@$CAMERA_IP_ADDRESS"
 REMOTE_SCRIPT="/tmp/sup"
 
@@ -36,7 +206,7 @@ SSH_OPTS="-o ConnectTimeout=30 -o ServerAliveInterval=2 \
 -o UserKnownHostsFile=/dev/null"
 
 echo "Initializing SSH connection to $REMOTE_HOST..."
-ssh -fN $SSH_OPTS $REMOTE_HOST || \
+ssh -fN $SSH_OPTS $REMOTE_HOST >/dev/null 2>/dev/null || \
 	die "Failed to initialize ssh connection"
 
 echo "SSH connection initialized."
@@ -54,21 +224,36 @@ if [ -z "$REMOTE_IMAGE_ID" ]; then
 fi
 
 if [ "$LOCAL_IMAGE_ID" != "$REMOTE_IMAGE_ID" ]; then
-	die "Firmware IMAGE_ID mismatch: local=$LOCAL_IMAGE_ID, device=$REMOTE_IMAGE_ID"
+	if [ "$FORCE" -eq 1 ]; then
+		echo "Warning: IMAGE_ID mismatch: local=$LOCAL_IMAGE_ID, device=$REMOTE_IMAGE_ID (forced)"
+	else
+		die "Firmware IMAGE_ID mismatch: local=$LOCAL_IMAGE_ID, device=$REMOTE_IMAGE_ID (use -f to override)"
+	fi
 fi
 
 echo "Firmware compatibility verified."
 
+upload_sysupgrade() {
+	remote_copy $LOCAL_SCRIPT $REMOTE_HOST:$REMOTE_SCRIPT || \
+		die "Failed to transfer sysupgrade utility"
+	remote_copy $LOCAL_SCRIPT2 $REMOTE_HOST:/sbin/$(basename $LOCAL_SCRIPT2) || \
+		die "Failed to transfer sysupgrade-stage2 utility"
+	remote_run "chmod +x $REMOTE_SCRIPT" || \
+		die "Failed to set execute permissions on sysupgrade utility"
+	echo "Sysupgrade utility installed successfully."
+}
+
 echo "Transferring sysupgrade utility to device..."
-remote_copy $LOCAL_SCRIPT $REMOTE_HOST:$REMOTE_SCRIPT || \
-	die "Failed to transfer sysupgrade utility"
-remote_copy $LOCAL_SCRIPT2 $REMOTE_HOST:/sbin/$(basename $LOCAL_SCRIPT2) || \
-	die "Failed to transfer sysupgrade-stage2 utility"
+upload_sysupgrade
 
-remote_run "chmod +x $REMOTE_SCRIPT" || \
-	die "Failed to set execute permissions on sysupgrade utility"
-
-echo "Sysupgrade utility installed successfully."
+if [ "$SKIP_SPACE_CHECK" -eq 1 ]; then
+	echo "Skipping space/memory checks (-n)."
+	select_remote_fw_path
+	prepare_upload_memory
+else
+	echo "Checking available space in /tmp on device..."
+	check_and_free_space
+fi
 
 echo "Transferring firmware file to the device..."
 remote_copy $LOCAL_FW_FILE $REMOTE_HOST:$REMOTE_FW_FILE || \
@@ -81,9 +266,36 @@ hash_r=$(remote_run "sha256sum $REMOTE_FW_FILE | cut -d' ' -f1")
 
 echo "Firmware file transferred and SHA256 checksum verified."
 
-remote_run "$REMOTE_SCRIPT -x $REMOTE_FW_FILE" 2>&1 | tee /dev/tty | grep -q "Rebooting" || \
-	die "Failed to flash firmware"
+pre_flash_uptime=$(remote_uptime_seconds)
+[ -z "$pre_flash_uptime" ] && die "Failed to read device uptime before flashing"
 
-echo "Firmware flashed successfully. Device is rebooting."
+ota_log=$(mktemp)
+remote_run "$REMOTE_SCRIPT -x $REMOTE_FW_FILE" 2>&1 | tee /dev/tty | tee "$ota_log" >/dev/null
+ota_status=${PIPESTATUS[0]}
+
+if grep -q "Rebooting" "$ota_log"; then
+	rm -f "$ota_log"
+	echo "Firmware flashed successfully. Device is rebooting."
+	exit 0
+fi
+
+if grep -q "Flash process running with PID" "$ota_log"; then
+	if wait_for_reboot_after_detach "$pre_flash_uptime"; then
+		rm -f "$ota_log"
+		echo "Firmware flashed successfully. Device is rebooting."
+		exit 0
+	fi
+
+	if remote_log_tail=$(remote_run "tail -n 50 /tmp/sysupgrade-flash.log" 2>/dev/null); then
+		echo "$remote_log_tail" >&2
+	fi
+	rm -f "$ota_log"
+	die "Detached flash did not complete successfully"
+fi
+
+rm -f "$ota_log"
+[ "$ota_status" -ne 0 ] && die "Failed to flash firmware"
+
+die "Failed to flash firmware"
 
 exit 0

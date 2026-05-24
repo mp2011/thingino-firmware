@@ -1,30 +1,23 @@
 config BR2_PACKAGE_THINGINO_UHTTPD
 	bool "thingino-uhttpd"
 	depends on !BR2_STATIC_LIBS # dlopen(), ustream-ssl
-	depends on BR2_TOOLCHAIN_HAS_SYNC_4 # json-c
+	depends on BR2_TOOLCHAIN_HAS_SYNC_4
 	depends on BR2_USE_MMU # fork()
 	depends on !BR2_PACKAGE_UHTTPD # conflicts with buildroot uhttpd
 
-	select BR2_PACKAGE_LIBUBOX
-	select BR2_PACKAGE_JSON_C
+	select BR2_PACKAGE_THINGINO_LIBUBOX
+	select BR2_PACKAGE_THINGINO_JCT
 	select BR2_PACKAGE_LIBXCRYPT if BR2_TOOLCHAIN_USES_GLIBC
 	help
-	  uHTTPd web server with HTTPS support and optional Lua scripting.
+	  uHTTPd web server with optional HTTPS support.
 	  Provides a secure, modern web server for thingino cameras with
-	  TLS/SSL encryption, session management, and extensible Lua-based
-	  web applications. Can be used standalone or with thingino-webui-lua
-	  for a complete modern web interface.
+	  TLS/SSL encryption and session management.
 
 	  Features:
 	  - Native HTTPS support with wolfSSL or mbedTLS encryption
-	  - Lua scripting for dynamic web applications
 	  - Session-based authentication and security
 	  - Automatic HTTP to HTTPS redirection
 	  - RESTful API endpoints for automation
-	  - Modern responsive web interface support
-
-	  Can be used standalone as a web server or with thingino-webui-lua
-	  for a complete modern camera management interface.
 
 	  https://wiki.openwrt.org/doc/howto/http.uhttpd
 
@@ -104,7 +97,7 @@ config BR2_PACKAGE_THINGINO_UHTTPD_LUA
 
 config BR2_PACKAGE_THINGINO_UHTTPD_UBUS
 	bool "Enable ubus support"
-	depends on BR2_PACKAGE_UBUS
+	select BR2_PACKAGE_THINGINO_UBUS
 	help
 	  Enable ubus support for inter-process communication
 	  with other system services.

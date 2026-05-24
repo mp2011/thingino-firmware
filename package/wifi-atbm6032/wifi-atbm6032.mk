@@ -1,7 +1,7 @@
 WIFI_ATBM6032_SITE_METHOD = git
 WIFI_ATBM6032_SITE = https://github.com/gtxaspec/atbm-wifi
 WIFI_ATBM6032_SITE_BRANCH = master
-WIFI_ATBM6032_VERSION = 13953b6e9090e620640edf4c6ea8ffc2e46da6b4
+WIFI_ATBM6032_VERSION = 88454ec7f78fdf8ce69b1cfb7f2288251eb0bf82
 
 WIFI_ATBM6032_LICENSE = GPL-2.0
 
@@ -29,15 +29,15 @@ endef
 LINUX_CONFIG_LOCALVERSION = $(shell awk -F "=" '/^CONFIG_LOCALVERSION=/ {print $$2}' $(BR2_LINUX_KERNEL_CUSTOM_CONFIG_FILE))
 
 define WIFI_ATBM6032_INSTALL_CONFIGS
-	$(INSTALL) -m 0755 -d $(TARGET_DIR)/lib/modules/3.10.14$(LINUX_CONFIG_LOCALVERSION)
-	touch $(TARGET_DIR)/lib/modules/3.10.14$(LINUX_CONFIG_LOCALVERSION)/modules.builtin.modinfo
+	$(INSTALL) -m 0755 -d $(TARGET_DIR)/usr/lib/modules/3.10.14$(LINUX_CONFIG_LOCALVERSION)
+	touch $(TARGET_DIR)/usr/lib/modules/3.10.14$(LINUX_CONFIG_LOCALVERSION)/modules.builtin.modinfo
 
 	$(INSTALL) -m 0755 -d $(TARGET_DIR)/usr/share/wifi
 	$(INSTALL) -m 0644 -t $(TARGET_DIR)/usr/share/wifi \
 		$(WIFI_ATBM_WIFI_PKGDIR)/files/*.txt
 
 	$(INSTALL) -D -m 0644 $(@D)/firmware/firmware_usb.bin \
-		$(TARGET_DIR)/lib/firmware/$(call qstrip,$(ATBM6032_MODULE_NAME))_fw.bin
+		$(TARGET_DIR)/usr/lib/firmware/$(call qstrip,$(ATBM6032_MODULE_NAME))_fw.bin
 endef
 
 WIFI_ATBM6032_POST_INSTALL_TARGET_HOOKS += WIFI_ATBM6032_INSTALL_CONFIGS

@@ -18,8 +18,8 @@ CAMERA=atom_cam2_t31x_gc2053_atbm6031 make
 # Fast incremental build (skips full rebuild)
 CAMERA=atom_cam2_t31x_gc2053_atbm6031 make fast
 
-# Release build (distclean + full build)
-CAMERA=atom_cam2_t31x_gc2053_atbm6031 make release
+# Clean rebuild (distclean + full build)
+CAMERA=atom_cam2_t31x_gc2053_atbm6031 make cleanbuild
 
 # Configure kernel or packages interactively
 CAMERA=atom_cam2_t31x_gc2053_atbm6031 make menuconfig
@@ -30,8 +30,8 @@ CAMERA=atom_cam2_t31x_gc2053_atbm6031 make saveconfig
 # Edit a camera defconfig directly
 CAMERA=atom_cam2_t31x_gc2053_atbm6031 make edit-defconfig
 
-# OTA update to a running camera (IP defaults to 192.168.1.10)
-CAMERA=atom_cam2_t31x_gc2053_atbm6031 IP=192.168.1.42 make upgrade_ota
+# OTA update to a running camera (set IP to the target device address)
+CAMERA=atom_cam2_t31x_gc2053_atbm6031 IP=192.168.1.42 make ota
 ```
 
 There are no automated test targets. Build validation happens via GitHub Actions (`.github/workflows/`).
@@ -131,7 +131,7 @@ When using an override:
 4. edit the sources and confirm the changes work
 5. create a patch for the package using `git diff` and add it to the package directory
 
-To recompile a packages use `CAMERA=<camera_defconfig> make rebuild-<packagename>`, `rebuild-` shorthand combines `package-dirclean` and `package-build`.
+To recompile a packages use `CAMERA=<camera_defconfig> make rebuild-<packagename>`, `rebuild-` shorthand combines `package-dirclean`, `package-build`, `package-reinstall`, and `target-finalize`.
 
 ### SSH
 

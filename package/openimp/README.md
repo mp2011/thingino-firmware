@@ -52,7 +52,7 @@ OpenIMP automatically detects the target platform based on your SoC selection:
 - T41 (Ingenic T41 family)
 - C100 (Ingenic C100)
 
-The platform is automatically determined from `BR2_SOC_FAMILY_INGENIC_*` configuration variables.
+The platform is automatically determined from the `SOC_FAMILY` variable.
 
 ## What Gets Installed
 
@@ -124,7 +124,7 @@ After building and flashing your firmware:
    file /usr/lib/libimp.so
    ```
 
-3. Test with your streaming application (e.g., prudynt-t, thingino-streamer)
+3. Test with your streaming application (e.g., prudynt-t, strero)
 
 ## Troubleshooting
 

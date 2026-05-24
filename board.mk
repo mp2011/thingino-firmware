@@ -2,7 +2,7 @@
 SHELL := /bin/bash
 
 # Targets that don't require board selection
-NOCAMERA_TARGETS := help bootstrap update update-buildroot update-buildroot-patches reset-buildroot download-cache agent-info show-vars tftpd-start tftpd-stop tftpd-restart tftpd-status tftpd-logs
+NOCAMERA_TARGETS := help bootstrap setup-hooks update update-buildroot update-buildroot-patches reset-buildroot download-cache agent-info tftpd-start tftpd-stop tftpd-restart tftpd-status tftpd-logs
 
 # Check if current target is exempted from board selection
 # MAKECMDGOALS contains the targets specified on command line
@@ -11,8 +11,8 @@ ifeq ($(CURRENT_TARGETS),)
 CURRENT_TARGETS := all
 endif
 
-# Check if any current target is in the exempted list
-SKIP_CAMERA_SELECTION := $(strip $(foreach target,$(CURRENT_TARGETS),$(filter $(target),$(NOCAMERA_TARGETS))))
+# Skip camera selection only if ALL current targets are exempted (no target needs camera)
+SKIP_CAMERA_SELECTION := $(if $(filter-out $(NOCAMERA_TARGETS),$(CURRENT_TARGETS)),,yes)
 
 # If target is normally skipped but CAMERA was explicitly provided, honor it
 ifneq ($(SKIP_CAMERA_SELECTION),)
@@ -24,6 +24,21 @@ endif
 # Only proceed with board selection if not exempted
 ifeq ($(SKIP_CAMERA_SELECTION),)
 BUILD_MEMO := /tmp/thingino-board.$(shell ps -o ppid= -p $$PPID | xargs)
+BUILD_IP_MEMO := $(BUILD_MEMO).ip
+INITIAL_CAMERA := $(strip $(CAMERA))
+INITIAL_IP := $(strip $(IP))
+IP_EXPLICIT := $(filter command line environment environment override,$(origin IP))
+
+ifneq ($(IP_EXPLICIT),)
+ifneq ($(strip $(IP)),)
+$(shell printf '%s\n' "$(strip $(IP))" > "$(BUILD_IP_MEMO)")
+else
+$(shell rm -f "$(BUILD_IP_MEMO)")
+endif
+else ifneq ($(wildcard $(BUILD_IP_MEMO)),)
+IP := $(shell cat "$(BUILD_IP_MEMO)")
+endif
+export IP
 
 # Check if CAMERA was provided via command line (skip all prompts)
 ifdef CAMERA
@@ -32,16 +47,36 @@ else
 # Check if CAMERA was provided via command line
 ifeq ($(CAMERA),)
 # Use select_camera script for interactive selection (it handles memo internally)
-CAMERA := $(shell $(SCRIPTS_DIR)/select_camera.sh $(CAMERA_SUBDIR) $(BUILD_MEMO) 2>/dev/tty | sed 's/\x1b[^a-zA-Z]*[a-zA-Z]//g' | tr -d '\n\r')
+CAMERA := $(shell $(SCRIPTS_DIR)/select_camera.sh $(CAMERA_SUBDIR) $(BUILD_MEMO) $(if $(IP_EXPLICIT),0,1) 2>/dev/tty | sed 's/\x1b[^a-zA-Z]*[a-zA-Z]//g' | tr -d '\n\r')
 # Check if selection was cancelled
 ifeq ($(CAMERA),)
 $(error Camera selection cancelled)
+endif
+# Reload IP from the memo after interactive selection so the current run sees prompt changes.
+ifeq ($(IP_EXPLICIT),)
+ifneq ($(wildcard $(BUILD_IP_MEMO)),)
+IP := $(shell cat "$(BUILD_IP_MEMO)")
+else
+IP :=
+endif
+export IP
 endif
 # After selection, find the config file
 CAMERA_CONFIG := $(shell find $(CAMERA_SUBDIR)/$(CAMERA) -name "$(CAMERA)_defconfig")
 else
 # CAMERA was provided via command line, find its config
 CAMERA_CONFIG := $(shell find $(CAMERA_SUBDIR) -name "$(CAMERA)_defconfig")
+endif
+endif
+
+CAMERA_SOURCED_DURING_LAUNCH := $(if $(and $(strip $(CAMERA)),$(if $(strip $(INITIAL_CAMERA)),,yes)),yes,)
+IP_SOURCED_DURING_LAUNCH := $(if $(and $(if $(IP_EXPLICIT),,yes),$(strip $(IP)),$(if $(strip $(INITIAL_IP)),,yes)),yes,)
+ifneq ($(filter yes,$(CAMERA_SOURCED_DURING_LAUNCH) $(IP_SOURCED_DURING_LAUNCH)),)
+ifneq ($(THINGINO_RESTARTED_WITH_PARAMS),1)
+THINGINO_NEEDS_RELAUNCH := 1
+RESTART_ARGS := CAMERA=$(CAMERA)$(if $(strip $(IP)), IP=$(IP))
+RESTART_DISPLAY_CMD := $(strip $(RESTART_ARGS) $(MAKE) --no-print-directory $(CURRENT_TARGETS))
+RESTART_CMD := $(strip THINGINO_RESTARTED_WITH_PARAMS=1 $(RESTART_DISPLAY_CMD))
 endif
 endif
 

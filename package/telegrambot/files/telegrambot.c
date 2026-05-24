@@ -277,6 +277,8 @@ typedef struct {
   char state_file[128];
   long long allowed_ids[8];
   int allowed_count;
+  long long allowed_user_ids[16];
+  int allowed_user_ids_count;
   char allowed_users[16][32];
   int allowed_users_count;
   struct {
@@ -295,7 +297,7 @@ static void make_url(char *buf, size_t bufsz, const Config *cfg, const char *met
 static long read_long(JsonValue *obj, const char *key, long def) {
   JsonValue *it = get_nested_item(obj, key);
   if (it && it->type == JSON_NUMBER) {
-    return (long)it->value.number;
+    return (long)it->value.number.integer;
   }
   return def;
 }
@@ -347,6 +349,17 @@ static int user_allowed(const Config *cfg, const char *username) {
     if (strcmp(cfg->allowed_users[i], username) == 0)
       return 1;
   }
+  return 0;
+}
+
+static int user_id_allowed(const Config *cfg, long long user_id) {
+  if (cfg->allowed_user_ids_count == 0)
+    return 1; // no user id filter
+  if (user_id == 0)
+    return 0;
+  for (int i = 0; i < cfg->allowed_user_ids_count; ++i)
+    if (cfg->allowed_user_ids[i] == user_id)
+      return 1;
   return 0;
 }
 
@@ -470,7 +483,7 @@ static int load_config_file(const char *path, Config *cfg) {
     for (int i = 0; i < n && cfg->allowed_count < (int)(sizeof(cfg->allowed_ids) / sizeof(cfg->allowed_ids[0])); ++i) {
       JsonValue *el = get_array_item(arr, i);
       if (el && el->type == JSON_NUMBER)
-        cfg->allowed_ids[cfg->allowed_count++] = (long long)el->value.number;
+        cfg->allowed_ids[cfg->allowed_count++] = (long long)el->value.number.integer;
     }
   }
 
@@ -484,6 +497,19 @@ static int load_config_file(const char *path, Config *cfg) {
       if (el && el->type == JSON_STRING) {
         snprintf(cfg->allowed_users[cfg->allowed_users_count++], sizeof(cfg->allowed_users[0]), "%s", el->value.string);
       }
+    }
+  }
+
+  // allowed_user_ids array
+  JsonValue *arr_uid = get_nested_item(root, "allowed_user_ids");
+  if (arr_uid && arr_uid->type == JSON_ARRAY) {
+    int n = get_array_size(arr_uid);
+    for (int i = 0; i < n &&
+                    cfg->allowed_user_ids_count < (int)(sizeof(cfg->allowed_user_ids) / sizeof(cfg->allowed_user_ids[0]));
+         ++i) {
+      JsonValue *el = get_array_item(arr_uid, i);
+      if (el && el->type == JSON_NUMBER)
+        cfg->allowed_user_ids[cfg->allowed_user_ids_count++] = (long long)el->value.number.integer;
     }
   }
 
@@ -632,18 +658,26 @@ static void process_update(const Config *cfg, JsonValue *upd) {
   JsonValue *cidv = get_object_item(chat, "id");
   if (!cidv || cidv->type != JSON_NUMBER)
     return;
-  long long chat_id = (long long)cidv->value.number;
+  long long chat_id = (long long)cidv->value.number.integer;
+  long long user_id = 0;
 
   // Username check
   const char *username = NULL;
   JsonValue *from = get_object_item(msg, "from");
   if (from && from->type == JSON_OBJECT) {
+    JsonValue *uid = get_object_item(from, "id");
+    if (uid && uid->type == JSON_NUMBER)
+      user_id = (long long)uid->value.number.integer;
     JsonValue *uname = get_object_item(from, "username");
     if (uname && uname->type == JSON_STRING)
       username = uname->value.string;
   }
   if (!user_allowed(cfg, username)) {
     syslog(LOG_INFO, "Ignoring message from username '%s'", username ? username : "");
+    return;
+  }
+  if (!user_id_allowed(cfg, user_id)) {
+    syslog(LOG_INFO, "Ignoring message from user id %lld (not allowed)", user_id);
     return;
   }
 
@@ -734,7 +768,7 @@ static int poll_once(const Config *cfg, long *offset_io) {
   if (!ok->value.boolean) {
     JsonValue *err = get_object_item(root, "error_code");
     JsonValue *desc = get_object_item(root, "description");
-    if (err && err->type == JSON_NUMBER && (long)err->value.number == 409 && desc && desc->type == JSON_STRING &&
+    if (err && err->type == JSON_NUMBER && (long)err->value.number.integer == 409 && desc && desc->type == JSON_STRING &&
         strcmp(desc->value.string,
                "Conflict: terminated by other getUpdates request; make sure that only one bot instance is running") ==
             0) {
@@ -756,7 +790,7 @@ static int poll_once(const Config *cfg, long *offset_io) {
     JsonValue *upd = get_array_item(res, i);
     // Track update_id
     JsonValue *uidv = upd && upd->type == JSON_OBJECT ? get_object_item(upd, "update_id") : NULL;
-    long uid = (uidv && uidv->type == JSON_NUMBER) ? (long)uidv->value.number : 0;
+    long uid = (uidv && uidv->type == JSON_NUMBER) ? (long)uidv->value.number.integer : 0;
     if (uid > *offset_io)
       *offset_io = uid;
     process_update(cfg, upd);

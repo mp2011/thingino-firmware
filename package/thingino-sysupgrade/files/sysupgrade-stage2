@@ -18,6 +18,20 @@ flash_firmware() {
 	flashcp -v $fw_file $mtd_dev
 }
 
+stop_streamer() {
+	echo_c 112 "\nStopping streamer in detached stage"
+	if [ -x /etc/init.d/S31raptor ]; then
+		/etc/init.d/S31raptor stop
+	elif [ -x /etc/init.d/S31prudynt ]; then
+		/etc/init.d/S31prudynt stop
+	else
+		killall prudynt 2>/dev/null || true
+		sleep 1
+		pidof prudynt >/dev/null 2>&1 && killall -9 prudynt 2>/dev/null || true
+	fi
+	sleep 1
+}
+
 stream_flash_progress() {
 	local logfile="$1"
 	local pid="$2"
@@ -60,6 +74,7 @@ detach_and_flash() {
 		exec >$logfile 2>&1
 
 		echo "=== Flash operation started at $(date) ==="
+		stop_streamer
 
 		MAX_TRIES=3
 		x=0
@@ -103,7 +118,9 @@ go_reboot() {
 	echo "Rebooting in 5 seconds..."
 	sleep 5
 	sync
-	echo wdt > /proc/jz/reset/reset
+	if [ -w /proc/jz/reset/reset ]; then
+		echo wdt > /proc/jz/reset/reset
+	fi
 	sleep 2
 	reboot -f
 }

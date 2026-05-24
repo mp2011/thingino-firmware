@@ -1,19 +1,39 @@
 #!/bin/sh
 
-. /usr/share/common
-
-parse_query() {
-	while IFS='=' read -r key value; do
-		value=$(printf '%b' "$(echo "$value" | sed 's/+/ /g; s/%\([0-9A-Fa-f][0-9A-Fa-f]\)/\\x\1/g')")
-		eval "PARAM_$key=\"\$value\""
-		export "PARAM_$key"
-	done <<-QUERY
-	$(echo "$QUERY_STRING" | tr '&' '\n')
-	QUERY
-}
+OS_RELEASE_FILE="/etc/os-release"
 
 urldecode() {
 	printf '%b' "$(echo "$1" | sed 's/+/ /g; s/%\([0-9A-Fa-f][0-9A-Fa-f]\)/\\x\1/g')"
+}
+
+set_param() {
+	key="$1"
+	value="$2"
+
+	case "$key" in
+		action) PARAM_action="$value" ;;
+		hostname) PARAM_hostname="$value" ;;
+		rootpass) PARAM_rootpass="$value" ;;
+		rootpkey) PARAM_rootpkey="$value" ;;
+		timezone) PARAM_timezone="$value" ;;
+		wlan_pass) PARAM_wlan_pass="$value" ;;
+		wlan_ssid) PARAM_wlan_ssid="$value" ;;
+		wlan_ap) PARAM_wlan_ap="$value" ;;
+		*) ;;
+	esac
+}
+
+parse_form_data() {
+	while IFS='=' read -r key value; do
+		[ -n "$key" ] || continue
+		set_param "$(urldecode "$key")" "$(urldecode "$value")"
+	done <<-FORM
+		$(printf '%s' "$1" | tr '&' '\n')
+	FORM
+}
+
+parse_query() {
+	parse_form_data "$QUERY_STRING"
 }
 
 json_encode() {
@@ -35,12 +55,12 @@ get_info() {
 	wlan_mac=$(ip link show wlan0 2>/dev/null | awk '/ether/ {print $2}')
 
 	cat <<-EOF
-	{
-		"hostname": "$(json_encode "$hostname")",
-		"image_id": "$(json_encode "$image_id")",
-		"build_id": "$(json_encode "$build_id")",
-		"wlan_mac": "$(json_encode "$wlan_mac")"
-	}
+		{
+			"hostname": "$(json_encode "$hostname")",
+			"image_id": "$(json_encode "$image_id")",
+			"build_id": "$(json_encode "$build_id")",
+			"wlan_mac": "$(json_encode "$wlan_mac")"
+		}
 	EOF
 }
 
@@ -59,7 +79,7 @@ scan_networks() {
 	# Wait up to 8 seconds for ongoing scan to complete
 	while [ -f "$SCAN_LOCK" ] && [ $SCAN_WAIT -lt 8 ]; do
 		# Check if lock is stale (older than 15 seconds)
-		LOCK_AGE=$(( $(date +%s) - $(stat -c %Y "$SCAN_LOCK" 2>/dev/null || echo 0) ))
+		LOCK_AGE=$(($(date +%s) - $(stat -c %Y "$SCAN_LOCK" 2>/dev/null || echo 0)))
 		if [ $LOCK_AGE -gt 15 ]; then
 			rm -f "$SCAN_LOCK"
 			break
@@ -104,12 +124,12 @@ scan_networks() {
 			first=0
 		fi
 		cat <<-NETWORK
-		{
-			"ssid": "$(json_encode "$ssid")",
-			"bssid": "$(json_encode "$bssid")",
-			"signal": $signal,
-			"security": "$(json_encode "$security")"
-		}
+			{
+				"ssid": "$(json_encode "$ssid")",
+				"bssid": "$(json_encode "$bssid")",
+				"signal": $signal,
+				"security": "$(json_encode "$security")"
+			}
 		NETWORK
 	done
 
@@ -121,19 +141,13 @@ scan_networks() {
 
 parse_post() {
 	if [ "$REQUEST_METHOD" = "POST" ]; then
-		if [ -n "$CONTENT_LENGTH" ]; then
-			read -n "$CONTENT_LENGTH" POST_DATA
-		else
-			read POST_DATA
-		fi
+		case "$CONTENT_LENGTH" in
+			'' | *[!0-9]*) POST_DATA='' ;;
+			0) POST_DATA='' ;;
+			*) POST_DATA=$(dd bs=1 count="$CONTENT_LENGTH" 2>/dev/null) ;;
+		esac
 
-		while IFS='=' read -r key value; do
-			value=$(urldecode "$value")
-			eval "PARAM_$key=\"\$value\""
-			export "PARAM_$key"
-		done <<-POST
-		$(echo "$POST_DATA" | tr '&' '\n')
-		POST
+		parse_form_data "$POST_DATA"
 	fi
 }
 
@@ -160,17 +174,17 @@ save_config() {
 	bad_chars=$(echo "$hostname" | sed 's/[0-9A-Z\.-]//ig')
 	if [ -n "$bad_chars" ]; then
 		cat <<-EOF
-		{
-			"success": false,
-			"error": "Hostname cannot contain $bad_chars"
-		}
+			{
+				"success": false,
+				"error": "Hostname cannot contain $bad_chars"
+			}
 		EOF
 		return
 	fi
 
 	# Update hostname
 	hostname "$hostname"
-	echo "$hostname" > /etc/hostname
+	echo "$hostname" >/etc/hostname
 
 	# Update wlan settings
 	if [ "true" = "$wlan_ap" ]; then
@@ -180,14 +194,14 @@ save_config() {
 	fi
 
 	# Update timezone
-	echo "$timezone" > /etc/timezone
+	echo "$timezone" >/etc/timezone
 
 	# Update root password
 	printf '%s:%s\n' "root" "$rootpass" | chpasswd -c sha512
 
 	# Update SSH key if provided
 	if [ -n "$rootpkey" ]; then
-		echo "$rootpkey" | tr -d '\r' | sed 's/^ //g' > /root/.ssh/authorized_keys
+		echo "$rootpkey" | tr -d '\r' | sed 's/^ //g' >/root/.ssh/authorized_keys
 	fi
 
 	# Update interface for onvif
@@ -195,9 +209,9 @@ save_config() {
 
 	# Success response
 	cat <<-EOF
-	{
-		"success": true
-	}
+		{
+			"success": true
+		}
 	EOF
 
 	# Reboot in background
