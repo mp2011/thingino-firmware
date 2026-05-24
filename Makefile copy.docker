@@ -3,7 +3,7 @@ DOCKER_IMAGE := thingino-builder
 DOCKER_TAG := latest
 SHELL := /bin/bash
 CONTAINER_ENGINE ?= $(shell command -v podman 2>/dev/null || command -v docker 2>/dev/null)
-USER_ID := $(shell id -u)
+USER_ID  := $(shell id -u)
 GROUP_ID := 1000
 USERNAME := builder
 DL_DIR := dl
@@ -15,14 +15,13 @@ WORKSPACE_DIR := $(shell pwd)
 ifeq ($(findstring podman,$(CONTAINER_ENGINE)),podman)
 	CONTAINER_RUN := $(CONTAINER_ENGINE) run --rm --userns=keep-id
 else
-	CONTAINER_RUN := $(CONTAINER_ENGINE) run --rm --user $(USER_ID):$(GROUP_ID) --network=host --privileged
+	CONTAINER_RUN := $(CONTAINER_ENGINE) run --rm --user $(USER_ID):$(GROUP_ID) --network=host
 endif
 
 CONTAINER_RUN_OPTS := \
-	-v $(WORKSPACE_DIR):/home/$(USERNAME) \
-	-v thingino-output:/workspace/output \
+	-v $(WORKSPACE_DIR):/workspace \
 	-v $(shell [ -e ${DL_DIR} ] || mkdir -p ${DL_DIR} && readlink -f ${DL_DIR}):/home/$(USERNAME)/dl \
-	-w /home/$(USERNAME) \
+	-w /workspace \
 	-e TERM=xterm-256color
 
 # Interactive container

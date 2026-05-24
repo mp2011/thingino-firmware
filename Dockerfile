@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM debian:trixie
+FROM --platform=linux/amd64 debian:trixie
 
 # Build arguments
 ARG USER_ID=1000
