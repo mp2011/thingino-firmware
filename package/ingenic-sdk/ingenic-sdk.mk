@@ -1,7 +1,7 @@
 INGENIC_SDK_SITE_METHOD = git
 INGENIC_SDK_SITE = https://github.com/themactep/ingenic-sdk
 INGENIC_SDK_SITE_BRANCH = master
-INGENIC_SDK_VERSION = 0a402bf2524263ca227eba4ed7af049e7ff21c47
+INGENIC_SDK_VERSION = ff16c633c3fb81b24e8b0d7549773ec5232be469
 
 INGENIC_SDK_LICENSE = GPL-3.0
 INGENIC_SDK_LICENSE_FILES = LICENSE
@@ -223,10 +223,4 @@ define INGENIC_SDK_INSTALL_TARGET_CMDS
 endef
 
 $(eval $(kernel-module))
-
-define INGENIC_SDK_UPDATE_FIRMWARE
-	echo "Add sensor bin to target $(TARGET_DIR)/usr/share/sensor/"
-	$(INSTALL) $(INGENIC_SDK_PKGDIR)/files/modules/gc5603-t41.bin $(TARGET_DIR)/usr/share/sensor/gc5603-t41.bin
-endef
-INGENIC_SDK_POST_INSTALL_TARGET_HOOKS += INGENIC_SDK_UPDATE_FIRMWARE
 $(eval $(generic-package))
