@@ -19,7 +19,7 @@ else
 endif
 
 CONTAINER_RUN_OPTS := \
-	-v $(WORKSPACE_DIR):/home/$(USERNAME) \
+	-v $(WORKSPACE_DIR):/workspace \
 	-v thingino-output:/workspace/output \
 	-v $(shell [ -e ${DL_DIR} ] || mkdir -p ${DL_DIR} && readlink -f ${DL_DIR}):/home/$(USERNAME)/dl \
 	-w /workspace \
