@@ -1,5 +1,5 @@
 diff --git a/arch/Config.in.mips b/arch/Config.in.mips
-index 29b4180d21..11477fa7f1 100644
+index 29b4180d21..d5f7c38c95 100644
 --- a/arch/Config.in.mips
 +++ b/arch/Config.in.mips
 @@ -97,6 +97,15 @@ config BR2_mips_xburst
@@ -18,6 +18,16 @@ index 29b4180d21..11477fa7f1 100644
  config BR2_mips4
  	bool "MIPS IV"
  config BR2_mips_64
+@@ -228,8 +237,8 @@ config BR2_MIPS_ENABLE_NAN_2008
+ endchoice
+ 
+ config BR2_GCC_TARGET_NAN
+-	default "legacy"	if BR2_MIPS_NAN_LEGACY
+ 	default "2008"		if BR2_MIPS_NAN_2008
++	default "legacy"	if BR2_MIPS_NAN_LEGACY
+ 
+ config BR2_ARCH
+ 	default "mips"		if BR2_mips
 @@ -255,6 +264,7 @@ config BR2_GCC_TARGET_ARCH
  	default "m6201"		if BR2_mips_m6250
  	default "p5600"		if BR2_mips_p5600
