@@ -598,6 +598,9 @@ endif
 	fi
 	cp $(OUTPUT_DIR)/.config $(OUTPUT_DIR)/.config_original
 	$(BR2_MAKE) BR2_DEFCONFIG=$(CAMERA_CONFIG_REAL) olddefconfig
+	@if grep -q "xburst2" $(OUTPUT_DIR)/.config; then \
+		sed -i 's/BR2_GCC_TARGET_NAN="legacy"/BR2_GCC_TARGET_NAN="2008"/; s/BR2_MIPS_NAN_LEGACY=y/BR2_MIPS_NAN_2008=y/; s/BR2_GCC_TARGET_ARCH="mips32"/BR2_GCC_TARGET_ARCH="mips32r2"/' $(OUTPUT_DIR)/.config; \
+	fi
 	# Create dependency tracking file
 	@echo "# Configuration dependency tracking file" > $(CONFIG_DEPS_FILE)
 	@echo "# Generated on $$(date)" >> $(CONFIG_DEPS_FILE)
@@ -613,6 +616,9 @@ defconfig: check-config
 	@$(TEAL) "$@"
 	# Ensure buildroot is properly configured
 	$(BR2_MAKE) BR2_DEFCONFIG=$(CAMERA_CONFIG_REAL) olddefconfig
+	@if grep -q "xburst2" $(OUTPUT_DIR)/.config; then \
+		sed -i 's/BR2_GCC_TARGET_NAN="legacy"/BR2_GCC_TARGET_NAN="2008"/; s/BR2_MIPS_NAN_LEGACY=y/BR2_MIPS_NAN_2008=y/; s/BR2_GCC_TARGET_ARCH="mips32"/BR2_GCC_TARGET_ARCH="mips32r2"/' $(OUTPUT_DIR)/.config; \
+	fi
 
 # Configuration debugging and maintenance targets
 show-config-deps:
